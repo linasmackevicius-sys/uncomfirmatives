@@ -35,6 +35,7 @@ export default function EntryDetail({ id }: Props) {
   const [editingDesc, setEditingDesc] = useState(false);
   const [titleValue, setTitleValue] = useState("");
   const [descValue, setDescValue] = useState("");
+  const [activityOpen, setActivityOpen] = useState(false);
 
   const loadEntry = useCallback(async () => {
     setLoading(true);
@@ -111,8 +112,8 @@ export default function EntryDetail({ id }: Props) {
           <div className="detail-id">NC-{entry.id}</div>
           <div style={{ display: "flex", gap: 8 }}>
             {editing ? (
-              <button className="btn btn-secondary btn-sm" onClick={exitEditMode}>
-                Done
+              <button className="btn btn-primary btn-sm" onClick={exitEditMode}>
+                Save
               </button>
             ) : (
               <button className="btn btn-primary btn-sm" onClick={() => setEditing(true)}>
@@ -191,12 +192,6 @@ export default function EntryDetail({ id }: Props) {
           )}
         </div>
 
-        <div className="detail-activity">
-          <div className="detail-activity-title">Activity</div>
-          <div className="detail-activity-placeholder">
-            Activity timeline coming soon...
-          </div>
-        </div>
       </div>
 
       <div className="entry-detail-sidebar">
@@ -289,6 +284,23 @@ export default function EntryDetail({ id }: Props) {
         <div className="field-row">
           <div className="field-label">Updated</div>
           <div className="field-value">{fmt(updated)}</div>
+        </div>
+
+        <div className="detail-activity-section">
+          <button
+            className="detail-activity-toggle"
+            onClick={() => setActivityOpen(!activityOpen)}
+          >
+            <span className={`sidebar-chevron${activityOpen ? " open" : ""}`}>&#9654;</span>
+            <span>Activity</span>
+          </button>
+          {activityOpen && (
+            <div className="detail-activity-content">
+              <div className="detail-activity-placeholder">
+                Activity timeline coming soon...
+              </div>
+            </div>
+          )}
         </div>
 
         {editing && (
