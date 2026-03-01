@@ -7,6 +7,7 @@ import EntryTable from "@/components/entry-table";
 import EntryList from "@/components/entry-list";
 import EntryForm from "@/components/entry-form";
 import FilterBar from "@/components/filter-bar";
+import { useEntryEvents } from "@/hooks/use-entry-events";
 import type { Entry, CreateEntryInput, PaginatedResponse } from "@/lib/types";
 
 const VIEW_STORAGE_KEY = "entries-view-mode";
@@ -106,17 +107,21 @@ export default function EntriesView({ group, title }: Props) {
     }
   }, []);
 
+  const { suppressBriefly } = useEntryEvents(refresh);
+
   useEffect(() => {
     refresh();
   }, [filterValues, search, group, page, pageSize, refresh]);
 
   const handleCreate = async (input: CreateEntryInput) => {
+    suppressBriefly();
     await api.entries.create(group ? { ...input, group } : input);
     refresh();
   };
 
   const handleUpdate = async (input: CreateEntryInput) => {
     if (!editingEntry) return;
+    suppressBriefly();
     await api.entries.update(editingEntry.id, input);
     refresh();
   };
@@ -200,7 +205,7 @@ export default function EntriesView({ group, title }: Props) {
       ) : viewMode === "table" ? (
         <EntryTable
           entries={data.data}
-          onRefresh={refresh}
+          onRefresh={() => { suppressBriefly(); refresh(); }}
           onEdit={handleEdit}
         />
       ) : (

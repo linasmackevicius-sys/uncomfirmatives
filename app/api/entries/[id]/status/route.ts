@@ -4,6 +4,7 @@ import {
   EntryNotFoundError,
   ValidationError,
 } from "@/lib/entries";
+import { emitEntryEvent } from "@/lib/event-emitter";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -12,6 +13,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   try {
     const { status } = await request.json();
     const entry = await updateEntryStatus(Number(id), status);
+    emitEntryEvent({ type: "entry.status_changed", id: entry.id });
     return NextResponse.json(entry);
   } catch (err) {
     if (err instanceof EntryNotFoundError) {

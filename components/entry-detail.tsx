@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
+import { useEntryEvents } from "@/hooks/use-entry-events";
 import type { Entry, EntryGroup } from "@/lib/types";
 import { GROUP_LABELS } from "@/lib/types";
 import StatusBadge from "@/components/status-badge";
@@ -21,11 +22,7 @@ export default function EntryDetail({ id }: Props) {
   const [titleValue, setTitleValue] = useState("");
   const [descValue, setDescValue] = useState("");
 
-  useEffect(() => {
-    loadEntry();
-  }, [id]);
-
-  async function loadEntry() {
+  const loadEntry = useCallback(async () => {
     setLoading(true);
     try {
       const e = await api.entries.get(id);
@@ -37,10 +34,17 @@ export default function EntryDetail({ id }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [id]);
+
+  const { suppressBriefly } = useEntryEvents(loadEntry, { entryId: id });
+
+  useEffect(() => {
+    loadEntry();
+  }, [loadEntry]);
 
   async function updateField(field: string, value: string) {
     if (!entry) return;
+    suppressBriefly();
     try {
       await api.entries.update(entry.id, { [field]: value });
       loadEntry();
@@ -51,6 +55,7 @@ export default function EntryDetail({ id }: Props) {
 
   async function handleDelete() {
     if (!entry || !confirm("Delete this entry?")) return;
+    suppressBriefly();
     await api.entries.delete(entry.id);
     router.push("/entries");
   }

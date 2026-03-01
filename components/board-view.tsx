@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "@/lib/api-client";
+import { useEntryEvents } from "@/hooks/use-entry-events";
 import type { Entry } from "@/lib/types";
 import BoardCard from "@/components/board-card";
 
@@ -39,6 +40,8 @@ export default function BoardView() {
       setLoading(false);
     }
   }, []);
+
+  useEntryEvents(loadEntries);
 
   useEffect(() => {
     loadEntries();

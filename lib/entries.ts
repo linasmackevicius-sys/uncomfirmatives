@@ -68,7 +68,7 @@ export async function listEntries(
   if (page < 1) page = 1;
   let pageSize = params.page_size ?? 10;
   if (pageSize < 1) pageSize = 10;
-  if (pageSize > 50) pageSize = 50;
+  if (pageSize > 200) pageSize = 200;
 
   const offset = (page - 1) * pageSize;
 

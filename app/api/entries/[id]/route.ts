@@ -6,6 +6,7 @@ import {
   EntryNotFoundError,
   ValidationError,
 } from "@/lib/entries";
+import { emitEntryEvent } from "@/lib/event-emitter";
 import type { UpdateEntryInput } from "@/lib/types";
 
 type Params = { params: Promise<{ id: string }> };
@@ -31,6 +32,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
   try {
     const input: UpdateEntryInput = await request.json();
     const entry = await updateEntry(Number(id), input);
+    emitEntryEvent({ type: "entry.updated", id: entry.id });
     return NextResponse.json(entry);
   } catch (err) {
     if (err instanceof EntryNotFoundError) {
@@ -50,6 +52,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
     await deleteEntry(Number(id));
+    emitEntryEvent({ type: "entry.deleted", id: Number(id) });
     return new NextResponse(null, { status: 204 });
   } catch (err) {
     if (err instanceof EntryNotFoundError) {

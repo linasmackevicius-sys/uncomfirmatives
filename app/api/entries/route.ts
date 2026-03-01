@@ -4,6 +4,7 @@ import {
   createEntry,
   ValidationError,
 } from "@/lib/entries";
+import { emitEntryEvent } from "@/lib/event-emitter";
 import type { CreateEntryInput } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
@@ -27,6 +28,7 @@ export async function POST(request: NextRequest) {
   try {
     const input: CreateEntryInput = await request.json();
     const entry = await createEntry(input);
+    emitEntryEvent({ type: "entry.created", id: entry.id });
     return NextResponse.json(entry, { status: 201 });
   } catch (err) {
     if (err instanceof ValidationError) {
