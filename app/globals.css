@@ -87,6 +87,27 @@ a:hover {
   overflow-y: auto;
   flex-shrink: 0;
   padding-top: 8px;
+  position: relative;
+}
+
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+}
+
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle:active {
+  background: var(--accent);
+}
+
+body.resizing {
+  cursor: col-resize !important;
+  user-select: none;
 }
 
 .sidebar-item {
