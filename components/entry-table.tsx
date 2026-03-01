@@ -6,11 +6,15 @@ import {
   getSortedRowModel,
   type SortingState,
   type ColumnDef,
+  type RowSelectionState,
   flexRender,
 } from "@tanstack/react-table";
 import { useState, useMemo } from "react";
 import type { Entry, EntryGroup } from "@/lib/types";
 import { GROUP_LABELS } from "@/lib/types";
+import StatusBadge from "@/components/status-badge";
+import { api } from "@/lib/api-client";
+import Link from "next/link";
 
 interface Props {
   entries: Entry[];
@@ -20,27 +24,86 @@ interface Props {
 
 export default function EntryTable({ entries, onRefresh, onEdit }: Props) {
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const handleStatusChange = async (id: number, status: string) => {
-    await fetch(`/api/entries/${id}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
+    await api.entries.updateStatus(id, status);
     onRefresh();
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this entry?")) return;
-    await fetch(`/api/entries/${id}`, { method: "DELETE" });
+    await api.entries.delete(id);
     onRefresh();
   };
+
+  const handleBatchStatus = async (status: string) => {
+    const ids = Object.keys(rowSelection)
+      .filter((k) => rowSelection[k])
+      .map((idx) => entries[Number(idx)]?.id)
+      .filter(Boolean);
+    await Promise.all(ids.map((id) => api.entries.updateStatus(id, status)));
+    setRowSelection({});
+    onRefresh();
+  };
+
+  const handleBatchDelete = async () => {
+    const ids = Object.keys(rowSelection)
+      .filter((k) => rowSelection[k])
+      .map((idx) => entries[Number(idx)]?.id)
+      .filter(Boolean);
+    if (!confirm(`Delete ${ids.length} entries?`)) return;
+    await Promise.all(ids.map((id) => api.entries.delete(id)));
+    setRowSelection({});
+    onRefresh();
+  };
+
+  const selectedCount = Object.values(rowSelection).filter(Boolean).length;
 
   const columns = useMemo<ColumnDef<Entry>[]>(
     () => [
       {
+        id: "select",
+        header: ({ table }) => (
+          <input
+            type="checkbox"
+            className="row-checkbox"
+            checked={table.getIsAllPageRowsSelected()}
+            onChange={table.getToggleAllPageRowsSelectedHandler()}
+          />
+        ),
+        cell: ({ row }) => (
+          <input
+            type="checkbox"
+            className="row-checkbox"
+            checked={row.getIsSelected()}
+            onChange={row.getToggleSelectedHandler()}
+          />
+        ),
+        size: 40,
+        enableSorting: false,
+      },
+      {
+        id: "nc_id",
+        header: "ID",
+        size: 80,
+        cell: ({ row }) => (
+          <Link href={`/entries/detail/${row.original.id}`} className="nc-id">
+            NC-{row.original.id}
+          </Link>
+        ),
+      },
+      {
         accessorKey: "title",
         header: "Title",
+        cell: ({ row }) => (
+          <Link
+            href={`/entries/detail/${row.original.id}`}
+            style={{ color: "var(--text-primary)", textDecoration: "none" }}
+          >
+            {row.original.title}
+          </Link>
+        ),
       },
       {
         accessorKey: "group",
@@ -99,12 +162,8 @@ export default function EntryTable({ entries, onRefresh, onEdit }: Props) {
         size: 160,
         cell: ({ getValue }) => {
           const d = new Date(getValue<string>());
-          return d.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          });
+          const pad = (n: number) => String(n).padStart(2, "0");
+          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
         },
       },
       {
@@ -135,10 +194,12 @@ export default function EntryTable({ entries, onRefresh, onEdit }: Props) {
   const table = useReactTable({
     data: entries,
     columns,
-    state: { sorting },
+    state: { sorting, rowSelection },
     onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    enableRowSelection: true,
   });
 
   if (entries.length === 0) {
@@ -151,41 +212,82 @@ export default function EntryTable({ entries, onRefresh, onEdit }: Props) {
   }
 
   return (
-    <div className="table-container">
-      <table>
-        <thead>
-          {table.getHeaderGroups().map((hg) => (
-            <tr key={hg.id}>
-              {hg.headers.map((header) => (
-                <th
-                  key={header.id}
-                  onClick={header.column.getToggleSortingHandler()}
-                  style={{ width: header.getSize() }}
-                >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  )}
-                  {{ asc: " ↑", desc: " ↓" }[
-                    header.column.getIsSorted() as string
-                  ] ?? ""}
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row) => (
-            <tr key={row.id}>
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <>
+      <div className="table-container">
+        <table>
+          <thead>
+            {table.getHeaderGroups().map((hg) => (
+              <tr key={hg.id}>
+                {hg.headers.map((header) => (
+                  <th
+                    key={header.id}
+                    onClick={header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined}
+                    style={{
+                      width: header.getSize(),
+                      cursor: header.column.getCanSort() ? "pointer" : "default",
+                    }}
+                  >
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+                    {{ asc: " ↑", desc: " ↓" }[
+                      header.column.getIsSorted() as string
+                    ] ?? ""}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map((row) => (
+              <tr key={row.id}>
+                {row.getVisibleCells().map((cell) => (
+                  <td key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {selectedCount > 0 && (
+        <div className="batch-bar">
+          <span className="batch-bar-count">{selectedCount} selected</span>
+          <select
+            className="status-select"
+            defaultValue=""
+            onChange={(e) => {
+              if (e.target.value) handleBatchStatus(e.target.value);
+              e.target.value = "";
+            }}
+            style={{
+              background: "var(--bg-input)",
+              color: "var(--text-primary)",
+              border: "1px solid var(--border)",
+            }}
+          >
+            <option value="" disabled>
+              Set status...
+            </option>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+          </select>
+          <button className="btn btn-sm btn-danger" onClick={handleBatchDelete}>
+            Delete
+          </button>
+          <button
+            className="btn btn-sm btn-secondary"
+            onClick={() => setRowSelection({})}
+          >
+            Clear
+          </button>
+        </div>
+      )}
+    </>
   );
 }

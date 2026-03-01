@@ -4,20 +4,20 @@ interface Props {
 }
 
 const defaultColors: Record<string, string> = {
-  open: '#569cd6',
-  in_progress: '#dcdcaa',
-  resolved: '#4ec9b0',
-  closed: '#6a6a6a',
+  open: '#3b82f6',
+  in_progress: '#f59e0b',
+  resolved: '#22c55e',
+  closed: '#71717a',
 }
 
 export default function StatusBadge({ status, color }: Props) {
-  const bg = color || defaultColors[status] || '#6a6a6a'
+  const bg = color || defaultColors[status] || '#71717a'
   return (
     <span
       className="badge"
       style={{ backgroundColor: `${bg}22`, color: bg, border: `1px solid ${bg}44` }}
     >
-      {status.replace('_', ' ')}
+      {status.replace(/_/g, ' ')}
     </span>
   )
 }

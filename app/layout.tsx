@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Sidebar from "@/components/sidebar";
+import Breadcrumbs from "@/components/breadcrumbs";
 
 export const metadata: Metadata = {
   title: "Uncomfirmatives",
@@ -15,14 +16,23 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <div className="app">
-          <header className="titlebar">
-            <h1>UNCOMFIRMATIVES</h1>
-          </header>
           <div className="app-body">
             <Sidebar />
-            <main className="main">{children}</main>
+            <div className="main-wrapper">
+              <header className="header-bar">
+                <Breadcrumbs />
+                <div className="header-actions">
+                  <input
+                    className="header-search"
+                    placeholder="Search..."
+                    readOnly
+                  />
+                  <div className="header-user">U</div>
+                </div>
+              </header>
+              <main className="main">{children}</main>
+            </div>
           </div>
-          <footer className="statusbar">Uncomfirmatives v0.1.0</footer>
         </div>
       </body>
     </html>

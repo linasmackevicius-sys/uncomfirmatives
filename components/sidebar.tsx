@@ -1,103 +1,136 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { EntryGroup } from "@/lib/types";
 import { GROUP_LABELS } from "@/lib/types";
 
 const groups: EntryGroup[] = ["incoming_control", "production", "client"];
 
-const SIDEBAR_MIN = 140;
-const SIDEBAR_MAX = 400;
-const SIDEBAR_DEFAULT = 220;
-const STORAGE_KEY = "sidebar-width";
+const STORAGE_KEY = "sidebar-collapsed";
 
 export default function Sidebar() {
+  const [collapsed, setCollapsed] = useState(false);
   const [entriesOpen, setEntriesOpen] = useState(true);
-  const [width, setWidth] = useState(SIDEBAR_DEFAULT);
-  const isDragging = useRef(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = Number(saved);
-      if (parsed >= SIDEBAR_MIN && parsed <= SIDEBAR_MAX) {
-        setWidth(parsed);
-      }
-    }
+    if (saved === "true") setCollapsed(true);
+
+    const mq = window.matchMedia("(max-width: 768px)");
+    if (mq.matches) setCollapsed(true);
   }, []);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    isDragging.current = true;
-    document.body.classList.add("resizing");
-
-    const onMouseMove = (e: MouseEvent) => {
-      const newWidth = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, e.clientX));
-      setWidth(newWidth);
-    };
-
-    const onMouseUp = () => {
-      isDragging.current = false;
-      document.body.classList.remove("resizing");
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
-      setWidth((w) => {
-        localStorage.setItem(STORAGE_KEY, String(w));
-        return w;
-      });
-    };
-
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
-  }, []);
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      localStorage.setItem(STORAGE_KEY, String(!prev));
+      return !prev;
+    });
+  };
 
   const isActive = (path: string) => pathname === path;
+  const width = collapsed ? 48 : 240;
 
   return (
-    <nav className="sidebar" style={{ width }}>
-      <Link
-        href="/"
-        className={`sidebar-item${isActive("/") ? " active" : ""}`}
-      >
-        <span className="sidebar-icon">&#9632;</span>
-        Dashboard
-      </Link>
+    <nav className={`sidebar${collapsed ? " collapsed" : ""}`} style={{ width }}>
+      <div className="sidebar-header">
+        <button
+          className="sidebar-toggle"
+          onClick={toggleCollapsed}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? "☰" : "◁"}
+        </button>
+      </div>
 
       <button
-        className={`sidebar-item sidebar-section${entriesOpen ? " open" : ""}`}
-        onClick={() => setEntriesOpen(!entriesOpen)}
+        className="sidebar-create-btn"
+        onClick={() => router.push("/entries?new=1")}
+        title="New Entry"
       >
-        <span className="sidebar-chevron">{entriesOpen ? "▾" : "▸"}</span>
-        Entries
+        <span className="icon">+</span>
+        <span className="label">New Entry</span>
       </button>
 
-      {entriesOpen && (
-        <div className="sidebar-children">
-          <Link
-            href="/entries"
-            className={`sidebar-item child${isActive("/entries") ? " active" : ""}`}
-          >
-            All Entries
-          </Link>
-          {groups.map((g) => (
-            <Link
-              key={g}
-              href={`/entries/${g}`}
-              className={`sidebar-item child${isActive(`/entries/${g}`) ? " active" : ""}`}
-            >
-              {GROUP_LABELS[g]}
-            </Link>
-          ))}
-        </div>
-      )}
+      <div className="sidebar-nav">
+        <SidebarItem
+          href="/"
+          icon="▦"
+          label="Dashboard"
+          active={isActive("/")}
+          collapsed={collapsed}
+        />
+        <SidebarItem
+          href="/entries"
+          icon="☰"
+          label="Entries"
+          active={isActive("/entries")}
+          collapsed={collapsed}
+        />
+        <SidebarItem
+          href="/board"
+          icon="▥"
+          label="Board"
+          active={isActive("/board")}
+          collapsed={collapsed}
+        />
 
-      <div
-        className="sidebar-resize-handle"
-        onMouseDown={handleMouseDown}
-      />
+        {!collapsed && (
+          <>
+            <button
+              className="sidebar-section-btn"
+              onClick={() => setEntriesOpen(!entriesOpen)}
+            >
+              <span className={`sidebar-chevron${entriesOpen ? " open" : ""}`}>▸</span>
+              <span>Groups</span>
+            </button>
+
+            {entriesOpen && (
+              <div className="sidebar-children">
+                {groups.map((g) => (
+                  <Link
+                    key={g}
+                    href={`/entries/${g}`}
+                    className={`sidebar-item child${isActive(`/entries/${g}`) ? " active" : ""}`}
+                  >
+                    <span className="sidebar-label">{GROUP_LABELS[g]}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </nav>
+  );
+}
+
+function SidebarItem({
+  href,
+  icon,
+  label,
+  active,
+  collapsed,
+}: {
+  href: string;
+  icon: string;
+  label: string;
+  active: boolean;
+  collapsed: boolean;
+}) {
+  return (
+    <div className="sidebar-item-wrapper">
+      <Link
+        href={href}
+        className={`sidebar-item${active ? " active" : ""}`}
+      >
+        <span className="sidebar-icon">{icon}</span>
+        <span className="sidebar-label">{label}</span>
+      </Link>
+      {collapsed && <span className="sidebar-tooltip">{label}</span>}
+    </div>
   );
 }
