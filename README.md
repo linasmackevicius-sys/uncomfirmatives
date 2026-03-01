@@ -1,108 +1,100 @@
 # Uncomfirmatives
 
-Nonconformity tracking application for production environments. Track, manage, and report on nonconformities across an organization.
-
-## Quick Start
-
-```bash
-# Full stack (MySQL + Backend + Frontend)
-docker compose up -d
-
-# Development (run separately)
-cd backend && air                 # Go backend :8080
-cd frontend && npm run dev        # Vite frontend :5173
-```
-
-Frontend dev server: http://localhost:5173
-Backend API: http://localhost:8080/api/v1
-MySQL: localhost:3307 (Docker mapped)
+Nonconformity tracking application. Track, manage, and report on nonconformities across an organization.
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Go 1.23, Chi/v5 router, GORM ORM |
-| Frontend | React 19, TypeScript 5.7, Vite 6, TanStack Table v8 |
-| Database | MySQL 8 |
-| Styling | VSCode dark theme (CSS variables) |
-| Deploy | Docker Compose (multi-stage builds) |
+| Framework | Next.js 15 (App Router) |
+| Frontend | React 19, TypeScript 5.7, TanStack Table v8 |
+| Database | MySQL 8, Drizzle ORM |
+| Deploy | Docker Compose (multi-stage build) |
+
+## Quick Start
+
+```bash
+# Start MySQL
+docker compose up -d db
+
+# Install dependencies and run dev server
+npm install
+npm run dev
+```
+
+App: http://localhost:3000
 
 ## Architecture
 
-Layered monorepo: **handler → service → model**
+Full-stack Next.js with layered separation: **route handler → service → schema**
 
 ```
-backend/
-  cmd/server/main.go          → entry point
-  internal/
-    config/                    → env var config
-    models/                    → GORM structs (entry, status, user)
-    handlers/                  → HTTP handlers (parse request → call service → return JSON)
-    services/                  → business logic + validation
-    middleware/                → CORS, logging, auth
-    router/                    → Chi route definitions
-
-frontend/src/
-  api/client.ts               → fetch wrapper (all API calls go through here)
-  components/                  → EntryTable, EntryForm, StatusBadge, Layout
-  pages/                       → Dashboard, Entries, Settings
-  hooks/useEntries.ts          → data fetching hooks
-  types/index.ts               → shared TypeScript interfaces
+app/
+  layout.tsx                      # Root layout (sidebar + header)
+  page.tsx                        # Dashboard (Server Component)
+  entries/
+    page.tsx                      # All entries (Client Component)
+    [group]/page.tsx              # Group-filtered entries
+  api/
+    entries/route.ts              # GET list, POST create
+    entries/stats/route.ts        # GET stats
+    entries/[id]/route.ts         # GET, PUT, DELETE
+    entries/[id]/status/route.ts  # PATCH status
+    statuses/route.ts             # GET statuses
+lib/
+  db.ts                           # Drizzle client singleton
+  schema.ts                       # Drizzle schema definitions
+  entries.ts                      # Service layer (business logic)
+  validation.ts                   # Status/severity/group validation
+  types.ts                        # Shared TypeScript types
+  api-client.ts                   # Client-side fetch wrapper
+components/
+  entry-table.tsx                 # TanStack Table
+  entry-form.tsx                  # Modal form
+  status-badge.tsx                # Status badge
+  sidebar.tsx                     # Sidebar nav
 ```
 
-## API Endpoints
+## API
 
-All under `/api/v1`:
+All under `/api`:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | /entries | List (filterable: status, severity, search) |
-| GET | /entries/:id | Get single entry |
 | POST | /entries | Create entry |
+| GET | /entries/:id | Get single entry |
 | PUT | /entries/:id | Update entry |
 | DELETE | /entries/:id | Delete entry |
 | PATCH | /entries/:id/status | Change status |
 | GET | /entries/stats | Dashboard statistics |
-| GET | /entries/export | Export CSV/Excel |
-| POST | /entries/import | Import CSV/Excel |
 | GET | /statuses | List available statuses |
 
 ## Database
 
-MySQL 8 with GORM auto-migration.
+MySQL 8 with Drizzle ORM. Schema in `lib/schema.ts`.
 
-**Core tables:**
-- `entries` — title, description, status, severity, assigned_to
-- `statuses` — name, color (hex), display order
-- `users` — username, email, password (bcrypt), role
+**Core tables:** `entries`, `statuses`, `users`
 
 **Statuses:** open → in_progress → resolved → closed
 **Severity:** minor | major | critical
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| DB_HOST | localhost | MySQL host |
-| DB_PORT | 3306 | MySQL port |
-| DB_NAME | uncomfirmatives | Database name |
-| DB_USER | app | Database user |
-| DB_PASS | apppass | Database password |
-| PORT | 8080 | Backend server port |
+Configure via `.env.local` (not committed):
 
-## Testing
+| Variable | Description |
+|----------|-------------|
+| DB_HOST | MySQL host |
+| DB_PORT | MySQL port |
+| DB_NAME | Database name |
+| DB_USER | Database user |
+| DB_PASS | Database password |
 
-```bash
-cd backend && go test ./...    # Go tests
-cd frontend && npm test        # Frontend tests
-```
-
-## Docker Production
+## Production
 
 ```bash
-docker compose build           # Build images
-docker compose up -d           # Run (backend :8080, frontend :3000, MySQL :3307)
+docker compose up -d
 ```
 
-Backend: golang:1.23-alpine → alpine:3.20 (~15MB)
-Frontend: node:22-alpine → nginx:alpine (serves static + proxies /api)
+Uses a multi-stage Node.js build with a non-root user (`nextjs:nodejs`).
