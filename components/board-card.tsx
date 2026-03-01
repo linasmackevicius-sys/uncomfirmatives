@@ -10,12 +10,24 @@ const SEVERITY_COLORS: Record<string, string> = {
   minor: "#3b82f6",
 };
 
+const STATUS_COLORS: Record<string, string> = {
+  resolved: "#22c55e",
+  closed: "#71717a",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  resolved: "Resolved",
+  closed: "Closed",
+};
+
 interface Props {
   entry: Entry;
   onDragStart: (e: React.DragEvent, id: number) => void;
+  onDragEnd?: () => void;
+  showStatus?: boolean;
 }
 
-export default function BoardCard({ entry, onDragStart }: Props) {
+export default function BoardCard({ entry, onDragStart, onDragEnd, showStatus }: Props) {
   return (
     <Link
       href={`/entries/detail/${entry.id}`}
@@ -25,6 +37,7 @@ export default function BoardCard({ entry, onDragStart }: Props) {
         e.dataTransfer.effectAllowed = "move";
         onDragStart(e, entry.id);
       }}
+      onDragEnd={onDragEnd}
       onClick={(e) => e.stopPropagation()}
       style={{ textDecoration: "none" }}
     >
@@ -43,6 +56,15 @@ export default function BoardCard({ entry, onDragStart }: Props) {
         <span className="board-card-group">
           {GROUP_LABELS[entry.group as EntryGroup] || entry.group}
         </span>
+        {showStatus && STATUS_LABELS[entry.status] && (
+          <span className="board-card-status">
+            <span
+              className="board-card-status-dot"
+              style={{ backgroundColor: STATUS_COLORS[entry.status] }}
+            />
+            {STATUS_LABELS[entry.status]}
+          </span>
+        )}
         {entry.assigned_to && (
           <span className="board-card-assignee">{entry.assigned_to}</span>
         )}

@@ -16,17 +16,19 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   open: "Open",
   in_progress: "In Progress",
-  resolved: "Resolved",
-  closed: "Closed",
+  done: "Done",
 };
 
-const STATUSES = ["open", "in_progress", "resolved", "closed"];
+type BoardColumn = "open" | "in_progress" | "done";
+const COLUMNS: BoardColumn[] = ["open", "in_progress", "done"];
 
 export default function BoardView() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const [dragOverSubZone, setDragOverSubZone] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const draggedId = useRef<number | null>(null);
 
   const loadEntries = useCallback(async () => {
@@ -49,26 +51,27 @@ export default function BoardView() {
 
   const handleDragStart = (_e: React.DragEvent, id: number) => {
     draggedId.current = id;
+    setIsDragging(true);
   };
 
-  const handleDragOver = (e: React.DragEvent, status: string) => {
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    setDragOverColumn(null);
+    setDragOverSubZone(null);
+    draggedId.current = null;
+  };
+
+  const handleDragOver = (e: React.DragEvent, column: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    setDragOverColumn(status);
+    setDragOverColumn(column);
   };
 
   const handleDragLeave = () => {
     setDragOverColumn(null);
   };
 
-  const handleDrop = async (e: React.DragEvent, status: string) => {
-    e.preventDefault();
-    setDragOverColumn(null);
-    const id = draggedId.current;
-    if (!id) return;
-    draggedId.current = null;
-
-    // Optimistic update
+  const applyStatus = async (id: number, status: string) => {
     setEntries((prev) =>
       prev.map((entry) =>
         entry.id === id ? { ...entry, status } : entry
@@ -82,13 +85,51 @@ export default function BoardView() {
     }
   };
 
-  const grouped = STATUSES.reduce(
-    (acc, s) => {
-      acc[s] = entries.filter((e) => e.status === s);
-      return acc;
-    },
-    {} as Record<string, Entry[]>
-  );
+  const handleDrop = async (e: React.DragEvent, column: string) => {
+    e.preventDefault();
+    setDragOverColumn(null);
+    setIsDragging(false);
+    const id = draggedId.current;
+    if (!id) return;
+    draggedId.current = null;
+
+    if (column !== "done") {
+      await applyStatus(id, column);
+    }
+    // For "done" column, drops are handled by sub-zones
+  };
+
+  const handleSubZoneDrop = async (e: React.DragEvent, status: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverColumn(null);
+    setDragOverSubZone(null);
+    setIsDragging(false);
+    const id = draggedId.current;
+    if (!id) return;
+    draggedId.current = null;
+
+    await applyStatus(id, status);
+  };
+
+  const handleSubZoneDragOver = (e: React.DragEvent, status: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverColumn("done");
+    setDragOverSubZone(status);
+  };
+
+  const handleSubZoneDragLeave = (e: React.DragEvent) => {
+    e.stopPropagation();
+    setDragOverSubZone(null);
+  };
+
+  const grouped: Record<BoardColumn, Entry[]> = {
+    open: entries.filter((e) => e.status === "open"),
+    in_progress: entries.filter((e) => e.status === "in_progress"),
+    done: entries.filter((e) => e.status === "resolved" || e.status === "closed"),
+  };
 
   if (loading) {
     return (
@@ -104,36 +145,80 @@ export default function BoardView() {
     );
   }
 
+  const isDraggingToDone = isDragging && dragOverColumn === "done";
+
   return (
     <div className="board">
-      {STATUSES.map((status) => (
-        <div key={status} className="board-column">
+      {COLUMNS.map((column) => (
+        <div key={column} className="board-column">
           <div className="board-column-header">
             <div className="board-column-title">
               <span
                 className="board-column-dot"
-                style={{ backgroundColor: STATUS_COLORS[status] }}
+                style={{
+                  backgroundColor:
+                    column === "done"
+                      ? STATUS_COLORS.resolved
+                      : STATUS_COLORS[column],
+                }}
               />
-              {STATUS_LABELS[status]}
+              {STATUS_LABELS[column]}
             </div>
             <span className="board-column-count">
-              {grouped[status].length}
+              {grouped[column].length}
             </span>
           </div>
-          <div
-            className={`board-column-body${dragOverColumn === status ? " drag-over" : ""}`}
-            onDragOver={(e) => handleDragOver(e, status)}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => handleDrop(e, status)}
-          >
-            {grouped[status].map((entry) => (
-              <BoardCard
-                key={entry.id}
-                entry={entry}
-                onDragStart={handleDragStart}
-              />
-            ))}
-          </div>
+
+          {column === "done" && isDragging && !grouped.done.some((e) => e.id === draggedId.current) ? (
+            <div
+              className="board-column-body board-done-split"
+              onDragOver={(e) => handleDragOver(e, column)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, column)}
+            >
+              <div
+                className={`board-done-zone${dragOverSubZone === "resolved" ? " zone-active" : ""}`}
+                onDragOver={(e) => handleSubZoneDragOver(e, "resolved")}
+                onDragLeave={handleSubZoneDragLeave}
+                onDrop={(e) => handleSubZoneDrop(e, "resolved")}
+              >
+                <span
+                  className="board-column-dot"
+                  style={{ backgroundColor: STATUS_COLORS.resolved }}
+                />
+                <span className="board-done-zone-label">Resolved</span>
+              </div>
+              <div
+                className={`board-done-zone${dragOverSubZone === "closed" ? " zone-active" : ""}`}
+                onDragOver={(e) => handleSubZoneDragOver(e, "closed")}
+                onDragLeave={handleSubZoneDragLeave}
+                onDrop={(e) => handleSubZoneDrop(e, "closed")}
+              >
+                <span
+                  className="board-column-dot"
+                  style={{ backgroundColor: STATUS_COLORS.closed }}
+                />
+                <span className="board-done-zone-label">Closed</span>
+              </div>
+            </div>
+          ) : (
+            <div
+              className={`board-column-body${dragOverColumn === column ? " drag-over" : ""}`}
+              onDragOver={(e) => handleDragOver(e, column)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, column)}
+            >
+              {grouped[column].map((entry) => (
+                <BoardCard
+                  key={entry.id}
+                  entry={entry}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                  showStatus={column === "done"}
+                />
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </div>
