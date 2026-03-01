@@ -16,31 +16,19 @@ services:
       timeout: 5s
       retries: 10
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: ../Dockerfile.backend
+  app:
+    build: .
     ports:
-      - "8080:8080"
+      - "3000:3000"
     environment:
       DB_HOST: db
       DB_PORT: "3306"
       DB_NAME: uncomfirmatives
       DB_USER: app
       DB_PASS: apppass
-      PORT: "8080"
     depends_on:
       db:
         condition: service_healthy
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: ../Dockerfile.frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
 
 volumes:
   db_data:
