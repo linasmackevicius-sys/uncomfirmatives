@@ -1,17 +1,16 @@
 services:
   db:
-    image: mysql:8
+    image: postgres:16
     environment:
-      MYSQL_ROOT_PASSWORD: rootpass
-      MYSQL_DATABASE: uncomfirmatives
-      MYSQL_USER: app
-      MYSQL_PASSWORD: apppass
+      POSTGRES_DB: uncomfirmatives
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: apppass
     ports:
-      - "3307:3306"
+      - "5432:5432"
     volumes:
-      - db_data:/var/lib/mysql
+      - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "pg_isready -U app -d uncomfirmatives"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -22,7 +21,7 @@ services:
       - "3000:3000"
     environment:
       DB_HOST: db
-      DB_PORT: "3306"
+      DB_PORT: "5432"
       DB_NAME: uncomfirmatives
       DB_USER: app
       DB_PASS: apppass

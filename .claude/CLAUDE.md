@@ -1,7 +1,7 @@
 # uncomfirmatives
 
 Nonconformity tracking. Next.js full-stack app.
-Next.js 15 (App Router) / React 19 / TS 5.7 / Drizzle ORM / MySQL 8 / TanStack Table v8
+Next.js 15 (App Router) / React 19 / TS 5.7 / Drizzle ORM / PostgreSQL / TanStack Table v8
 
 ## Structure
 
@@ -64,16 +64,16 @@ Statuses: open → in_progress → resolved → closed | Severity: minor, major,
 ## Commands
 
 ```bash
-docker compose up -d db         # Start MySQL only
+docker compose up -d db         # Start PostgreSQL only
 npm run dev                     # Next.js dev (:3000)
 npm run build                   # Production build
-docker compose up -d            # Full stack (MySQL + Next.js)
+docker compose up -d            # Full stack (PostgreSQL + Next.js)
 ```
 
 ## Database
 
-MySQL 8. Env: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`.
-Local dev connects to port 3307 (mapped from docker MySQL).
+PostgreSQL. Env: `DATABASE_URL` or `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`.
+Local dev connects to port 5432 (docker PostgreSQL).
 Drizzle schema in `lib/schema.ts`. Use `drizzle-kit` for migrations.
 
 ## Development Workflow

@@ -44,19 +44,15 @@ export async function createAttachment(
 
   await writeFile(storedPath, file.buffer);
 
-  const [result] = await db.insert(attachments).values({
+  const [row] = await db.insert(attachments).values({
     entryId,
     filename: file.name,
     storedPath,
     mimeType: file.type || null,
     sizeBytes: file.buffer.length,
     uploadedBy: uploadedBy || null,
-  });
+  }).returning();
 
-  const [row] = await db
-    .select()
-    .from(attachments)
-    .where(eq(attachments.id, result.insertId));
   return toAttachment(row);
 }
 

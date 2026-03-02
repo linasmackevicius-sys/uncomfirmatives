@@ -14,8 +14,8 @@ export async function getAnalytics(
 
   const dateExpr =
     groupBy === "month"
-      ? sql`DATE_FORMAT(created_at, '%Y-%m-01')`
-      : sql`DATE(DATE_SUB(created_at, INTERVAL WEEKDAY(created_at) DAY))`;
+      ? sql`DATE_TRUNC('month', created_at)::date`
+      : sql`DATE_TRUNC('week', created_at)::date`;
 
   const overTimeRows = await db
     .select({
@@ -29,7 +29,7 @@ export async function getAnalytics(
   const [avgRow] = await db
     .select({
       avg_hours: sql<number | null>`
-        AVG(TIMESTAMPDIFF(HOUR, created_at, updated_at))
+        AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 3600)
       `.as("avg_hours"),
     })
     .from(entries)
@@ -41,7 +41,7 @@ export async function getAnalytics(
     .where(
       and(
         isNotNull(entries.dueDate),
-        sql`due_date < CURDATE()`,
+        sql`due_date < CURRENT_DATE`,
         sql`status NOT IN ('resolved', 'closed')`
       )
     );

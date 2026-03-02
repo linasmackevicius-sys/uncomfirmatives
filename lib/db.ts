@@ -1,15 +1,11 @@
-import { drizzle } from "drizzle-orm/mysql2";
-import mysql from "mysql2/promise";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import * as schema from "./schema";
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || "127.0.0.1",
-  port: Number(process.env.DB_PORT) || 3307,
-  database: process.env.DB_NAME || "uncomfirmatives",
-  user: process.env.DB_USER || "app",
-  password: process.env.DB_PASS || "apppass",
-  waitForConnections: true,
-  connectionLimit: 10,
-});
+const connectionString =
+  process.env.DATABASE_URL ||
+  `postgres://${process.env.DB_USER || "app"}:${process.env.DB_PASS || "apppass"}@${process.env.DB_HOST || "127.0.0.1"}:${process.env.DB_PORT || "5432"}/${process.env.DB_NAME || "uncomfirmatives"}`;
 
-export const db = drizzle(pool, { schema, mode: "default" });
+const client = postgres(connectionString);
+
+export const db = drizzle(client, { schema });

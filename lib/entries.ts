@@ -146,7 +146,7 @@ export async function createEntry(input: CreateEntryInput): Promise<Entry> {
     }
   }
 
-  const [result] = await db.insert(entries).values({
+  const [inserted] = await db.insert(entries).values({
     title: input.title,
     description: input.description || null,
     status: "open",
@@ -164,9 +164,9 @@ export async function createEntry(input: CreateEntryInput): Promise<Entry> {
     estimatedCost: input.estimated_cost ?? null,
     actualCost: input.actual_cost ?? null,
     currency: input.currency || "EUR",
-  });
+  }).returning();
 
-  const entry = await getEntryById(result.insertId);
+  const entry = await getEntryById(inserted.id);
 
   // Auto-assign workflow if template key provided
   if (input.workflow_template_key) {

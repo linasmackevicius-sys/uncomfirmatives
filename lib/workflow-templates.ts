@@ -236,9 +236,9 @@ export async function seedTemplates(): Promise<void> {
       name: template.name,
       templateKey: template.templateKey,
       description: template.description,
-    });
+    }).returning();
 
-    const templateId = inserted.insertId;
+    const templateId = inserted.id;
 
     await db.insert(workflowTemplateSteps).values(
       template.steps.map((step, index) => ({

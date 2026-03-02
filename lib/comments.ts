@@ -33,15 +33,11 @@ export async function createComment(
   if (!input.author?.trim()) throw new ValidationError("author is required");
   if (!input.content?.trim()) throw new ValidationError("content is required");
 
-  const [result] = await db.insert(comments).values({
+  const [row] = await db.insert(comments).values({
     entryId,
     author: input.author.trim(),
     content: input.content.trim(),
-  });
+  }).returning();
 
-  const [row] = await db
-    .select()
-    .from(comments)
-    .where(eq(comments.id, result.insertId));
   return toComment(row);
 }

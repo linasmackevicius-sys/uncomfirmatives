@@ -24,12 +24,11 @@ export async function createTag(
 ): Promise<Tag> {
   if (!name) throw new TagError("tag name is required");
 
-  const [result] = await db.insert(tags).values({
+  const [row] = await db.insert(tags).values({
     name,
     color: color || null,
-  });
+  }).returning();
 
-  const [row] = await db.select().from(tags).where(eq(tags.id, result.insertId));
   return toTag(row);
 }
 
