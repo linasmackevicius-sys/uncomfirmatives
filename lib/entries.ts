@@ -1,7 +1,10 @@
 import { db } from "./db";
-import { entries } from "./schema";
+import { entries, workflowSteps } from "./schema";
 import { eq, like, or, and, sql, desc, asc, type SQL } from "drizzle-orm";
 import { VALID_STATUSES, VALID_SEVERITIES, VALID_GROUPS } from "./validation";
+import { assignWorkflow, deleteWorkflowSteps } from "./workflows";
+import { deleteAttachmentsByEntry } from "./attachments";
+import { deleteEntryTags } from "./tags";
 import type {
   Entry,
   CreateEntryInput,
@@ -146,7 +149,14 @@ export async function createEntry(input: CreateEntryInput): Promise<Entry> {
     currency: input.currency || "EUR",
   });
 
-  return getEntryById(result.insertId);
+  const entry = await getEntryById(result.insertId);
+
+  // Auto-assign workflow if template key provided
+  if (input.workflow_template_key) {
+    await assignWorkflow(entry.id, input.workflow_template_key);
+  }
+
+  return getEntryById(entry.id);
 }
 
 export async function updateEntry(
@@ -239,6 +249,9 @@ export async function updateEntryStatus(
 
 export async function deleteEntry(id: number): Promise<void> {
   await getEntryById(id); // ensures exists
+  await deleteWorkflowSteps(id);
+  await deleteAttachmentsByEntry(id);
+  await deleteEntryTags(id);
   await db.delete(entries).where(eq(entries.id, id));
 }
 
@@ -293,6 +306,26 @@ export async function getStats(): Promise<Stats> {
     })
     .from(entries);
 
+  // Workflow stats: count entries where all steps are completed/skipped vs. those with remaining steps
+  const workflowEntries = await db
+    .select({
+      entryId: workflowSteps.entryId,
+      total: sql<number>`COUNT(*)`,
+      done: sql<number>`SUM(CASE WHEN ${workflowSteps.status} IN ('completed', 'skipped') THEN 1 ELSE 0 END)`,
+    })
+    .from(workflowSteps)
+    .groupBy(workflowSteps.entryId);
+
+  let workflowCompleted = 0;
+  let workflowInProgress = 0;
+  for (const row of workflowEntries) {
+    if (row.done >= row.total) {
+      workflowCompleted++;
+    } else {
+      workflowInProgress++;
+    }
+  }
+
   return {
     total: totalResult.count,
     by_status: byStatus,
@@ -300,7 +333,7 @@ export async function getStats(): Promise<Stats> {
     by_group: byGroup,
     total_estimated_cost: costResult.totalEstimated,
     total_actual_cost: costResult.totalActual,
-    workflow_completed_count: 0,
-    workflow_in_progress_count: 0,
+    workflow_completed_count: workflowCompleted,
+    workflow_in_progress_count: workflowInProgress,
   };
 }
