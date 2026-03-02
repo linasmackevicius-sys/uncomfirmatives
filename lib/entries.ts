@@ -40,6 +40,13 @@ function toEntry(row: typeof entries.$inferSelect): Entry {
     corrective_action: row.correctiveAction ?? "",
     preventive_action: row.preventiveAction ?? "",
     due_date: row.dueDate ?? null,
+    workflow_template_key: row.workflowTemplateKey ?? null,
+    product_name: row.productName ?? null,
+    order_number: row.orderNumber ?? null,
+    batch_number: row.batchNumber ?? null,
+    estimated_cost: row.estimatedCost ?? null,
+    actual_cost: row.actualCost ?? null,
+    currency: row.currency ?? "EUR",
     created_at: row.createdAt?.toISOString() ?? "",
     updated_at: row.updatedAt?.toISOString() ?? "",
   };
@@ -130,6 +137,13 @@ export async function createEntry(input: CreateEntryInput): Promise<Entry> {
     correctiveAction: input.corrective_action || null,
     preventiveAction: input.preventive_action || null,
     dueDate: input.due_date || null,
+    workflowTemplateKey: input.workflow_template_key || null,
+    productName: input.product_name || null,
+    orderNumber: input.order_number || null,
+    batchNumber: input.batch_number || null,
+    estimatedCost: input.estimated_cost ?? null,
+    actualCost: input.actual_cost ?? null,
+    currency: input.currency || "EUR",
   });
 
   return getEntryById(result.insertId);
@@ -181,6 +195,27 @@ export async function updateEntry(
       throw new ValidationError("invalid due_date: must be YYYY-MM-DD");
     }
     updates.dueDate = input.due_date;
+  }
+  if (input.workflow_template_key !== undefined) {
+    updates.workflowTemplateKey = input.workflow_template_key || null;
+  }
+  if (input.product_name !== undefined) {
+    updates.productName = input.product_name || null;
+  }
+  if (input.order_number !== undefined) {
+    updates.orderNumber = input.order_number || null;
+  }
+  if (input.batch_number !== undefined) {
+    updates.batchNumber = input.batch_number || null;
+  }
+  if (input.estimated_cost !== undefined) {
+    updates.estimatedCost = input.estimated_cost ?? null;
+  }
+  if (input.actual_cost !== undefined) {
+    updates.actualCost = input.actual_cost ?? null;
+  }
+  if (input.currency !== undefined) {
+    updates.currency = input.currency || "EUR";
   }
 
   if (Object.keys(updates).length > 0) {
@@ -251,10 +286,21 @@ export async function getStats(): Promise<Stats> {
     byGroup[row.group ?? "incoming_control"] = row.count;
   }
 
+  const [costResult] = await db
+    .select({
+      totalEstimated: sql<number>`COALESCE(SUM(estimated_cost), 0)`,
+      totalActual: sql<number>`COALESCE(SUM(actual_cost), 0)`,
+    })
+    .from(entries);
+
   return {
     total: totalResult.count,
     by_status: byStatus,
     by_severity: bySeverity,
     by_group: byGroup,
+    total_estimated_cost: costResult.totalEstimated,
+    total_actual_cost: costResult.totalActual,
+    workflow_completed_count: 0,
+    workflow_in_progress_count: 0,
   };
 }

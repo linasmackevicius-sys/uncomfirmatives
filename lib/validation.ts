@@ -12,3 +12,12 @@ export const VALID_GROUPS = new Set([
   "production",
   "client",
 ]);
+
+export const VALID_WORKFLOW_STEP_STATUSES = new Set([
+  "pending",
+  "in_progress",
+  "completed",
+  "skipped",
+]);
+
+export const VALID_CURRENCIES = new Set(["EUR", "USD", "GBP", "SEK"]);
