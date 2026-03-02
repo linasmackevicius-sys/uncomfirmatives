@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api-client";
-import type { AnalyticsResponse, Stats } from "@/lib/types";
+import type { AnalyticsResponse, Stats, CostSummary } from "@/lib/types";
 import { GROUP_LABELS, type EntryGroup } from "@/lib/types";
 import DateRangePicker from "@/components/date-range-picker";
 import {
@@ -61,6 +61,7 @@ function today(): string {
 export default function AnalyticsView() {
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [costSummary, setCostSummary] = useState<CostSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [groupBy, setGroupBy] = useState<"week" | "month">("week");
   const [dateRange, setDateRange] = useState({
@@ -71,12 +72,14 @@ export default function AnalyticsView() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [a, s] = await Promise.all([
+      const [a, s, c] = await Promise.all([
         api.entries.analytics(groupBy),
         api.entries.stats(),
+        api.costs.summary().catch(() => null),
       ]);
       setAnalytics(a);
       setStats(s);
+      setCostSummary(c);
     } catch {
       // silently fail
     } finally {
@@ -173,6 +176,25 @@ export default function AnalyticsView() {
             {avgDays !== null ? `${avgDays}d` : "N/A"}
           </div>
         </div>
+        {stats.workflow_completed_count + stats.workflow_in_progress_count > 0 && (
+          <div className="stat-card">
+            <div className="label">Workflows Done</div>
+            <div className="value" style={{ color: "var(--success)" }}>
+              {stats.workflow_completed_count}
+              <span style={{ color: "var(--text-muted)", fontSize: 14, fontWeight: 400 }}>
+                /{stats.workflow_completed_count + stats.workflow_in_progress_count}
+              </span>
+            </div>
+          </div>
+        )}
+        {costSummary && costSummary.total_estimated > 0 && (
+          <div className="stat-card">
+            <div className="label">Total Cost</div>
+            <div className={`value${costSummary.total_actual > costSummary.total_estimated ? " cost-over" : ""}`}>
+              {new Intl.NumberFormat("en", { style: "currency", currency: "EUR", minimumFractionDigits: 0 }).format(costSummary.total_actual / 100)}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="analytics-charts">

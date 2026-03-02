@@ -2647,7 +2647,7 @@ textarea {
   padding: 1px 6px;
 }
 
-.table-toolbar {
+.column-toolbar {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 8px;
@@ -2684,4 +2684,97 @@ textarea {
 
 .column-picker-item input[type="checkbox"] {
   accent-color: var(--accent);
+}
+
+/* ── Dashboard: Financial + Workflow Widgets ──── */
+
+.financial-summary {
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0 12px;
+}
+
+.financial-item {
+  text-align: center;
+}
+
+.financial-item .label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.financial-item .value {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.financial-by-severity {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.financial-severity-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.financial-severity-row > span:first-child {
+  width: 60px;
+  text-transform: capitalize;
+}
+
+.financial-cost {
+  color: var(--text-secondary);
+  min-width: 70px;
+  text-align: right;
+}
+
+.workflow-progress-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.workflow-progress-bar-container {
+  padding: 4px 0;
+}
+
+.workflow-progress-bar {
+  height: 8px;
+  background: var(--bg-input);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.workflow-progress-fill {
+  height: 100%;
+  background: var(--success);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.workflow-progress-counts {
+  display: flex;
+  justify-content: space-around;
+}
+
+.workflow-progress-count {
+  text-align: center;
+}
+
+.workflow-progress-count .value {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.workflow-progress-count .label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
 }

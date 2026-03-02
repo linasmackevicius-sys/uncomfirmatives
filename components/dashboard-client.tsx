@@ -5,9 +5,18 @@ import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { useEntryEvents } from "@/hooks/use-entry-events";
 import StatusBadge from "@/components/status-badge";
-import type { Stats, Entry, EntryGroup, AnalyticsResponse } from "@/lib/types";
+import type { Stats, Entry, EntryGroup, AnalyticsResponse, CostSummary } from "@/lib/types";
 import { GROUP_LABELS } from "@/lib/types";
 import { ResponsiveContainer, LineChart, Line } from "recharts";
+
+function formatCost(cents: number): string {
+  return new Intl.NumberFormat("en", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
+}
 
 const STATUS_COLORS: Record<string, string> = {
   open: "#3b82f6",
@@ -50,18 +59,21 @@ export default function DashboardClient() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [recent, setRecent] = useState<Entry[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
+  const [costSummary, setCostSummary] = useState<CostSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
-      const [s, r, a] = await Promise.all([
+      const [s, r, a, c] = await Promise.all([
         api.entries.stats(),
         api.entries.list({ page: 1, page_size: 8 }),
         api.entries.analytics("week"),
+        api.costs.summary().catch(() => null),
       ]);
       setStats(s);
       setRecent(r.data);
       setAnalytics(a);
+      setCostSummary(c);
     } catch {
       // silently fail on refresh
     } finally {
@@ -236,6 +248,83 @@ export default function DashboardClient() {
               </div>
             )
           )}
+        </div>
+      )}
+
+      {/* Financial Impact */}
+      {costSummary && (costSummary.total_estimated > 0 || costSummary.total_actual > 0) && (
+        <div className="widget">
+          <div className="widget-header">Financial Impact</div>
+          <div className="widget-body">
+            <div className="financial-summary">
+              <div className="financial-item">
+                <div className="label">Estimated</div>
+                <div className="value">{formatCost(costSummary.total_estimated)}</div>
+              </div>
+              <div className="financial-item">
+                <div className={`value${costSummary.total_actual > costSummary.total_estimated ? " cost-over" : ""}`}>
+                  {formatCost(costSummary.total_actual)}
+                </div>
+                <div className="label">Actual</div>
+              </div>
+            </div>
+            {Object.keys(costSummary.by_severity).length > 0 && (
+              <div className="financial-by-severity">
+                {SEVERITIES.map((sev) => {
+                  const data = costSummary.by_severity[sev];
+                  if (!data) return null;
+                  return (
+                    <div key={sev} className="financial-severity-row">
+                      <span className={`severity-${sev}`}>{sev}</span>
+                      <span className="financial-cost">{formatCost(data.estimated)}</span>
+                      <span className="financial-cost">{formatCost(data.actual)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Workflow Progress */}
+      {stats && (stats.workflow_completed_count > 0 || stats.workflow_in_progress_count > 0) && (
+        <div className="widget">
+          <div className="widget-header">Workflow Progress</div>
+          <div className="widget-body">
+            <div className="workflow-progress-widget">
+              <div className="workflow-progress-bar-container">
+                <div className="workflow-progress-bar">
+                  <div
+                    className="workflow-progress-fill"
+                    style={{
+                      width: `${
+                        stats.workflow_completed_count + stats.workflow_in_progress_count > 0
+                          ? (stats.workflow_completed_count /
+                              (stats.workflow_completed_count + stats.workflow_in_progress_count)) *
+                            100
+                          : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="workflow-progress-counts">
+                <div className="workflow-progress-count">
+                  <span className="value" style={{ color: "var(--success)" }}>
+                    {stats.workflow_completed_count}
+                  </span>
+                  <span className="label">Completed</span>
+                </div>
+                <div className="workflow-progress-count">
+                  <span className="value" style={{ color: "var(--warning)" }}>
+                    {stats.workflow_in_progress_count}
+                  </span>
+                  <span className="label">In Progress</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

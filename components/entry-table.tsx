@@ -324,7 +324,7 @@ export default function EntryTable({ entries, onRefresh, onEdit }: Props) {
 
   return (
     <>
-      <div className="table-toolbar">
+      <div className="column-toolbar">
         <div style={{ position: "relative" }}>
           <button
             className="btn btn-sm btn-secondary"

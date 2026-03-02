@@ -8,11 +8,11 @@ import EntryList from "@/components/entry-list";
 import EntryForm from "@/components/entry-form";
 import FilterBar from "@/components/filter-bar";
 import { useEntryEvents } from "@/hooks/use-entry-events";
-import type { Entry, CreateEntryInput, PaginatedResponse } from "@/lib/types";
+import type { Entry, CreateEntryInput, PaginatedResponse, Tag } from "@/lib/types";
 
 const VIEW_STORAGE_KEY = "entries-view-mode";
 
-const FILTER_CONFIGS = [
+const STATIC_FILTER_CONFIGS = [
   {
     key: "status",
     label: "Status",
@@ -65,6 +65,25 @@ export default function EntriesView({ group, title }: Props) {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+
+  // Load tags for filter
+  useEffect(() => {
+    api.tags.list().then(setAllTags).catch(() => {});
+  }, []);
+
+  // Build filter configs with dynamic tags
+  const FILTER_CONFIGS = useMemo(() => {
+    const configs = [...STATIC_FILTER_CONFIGS];
+    if (allTags.length > 0) {
+      configs.push({
+        key: "tag",
+        label: "Tag",
+        options: allTags.map((t) => ({ value: String(t.id), label: t.name })),
+      });
+    }
+    return configs;
+  }, [allTags]);
 
   // Initialize view mode from localStorage
   useEffect(() => {
@@ -85,6 +104,7 @@ export default function EntriesView({ group, title }: Props) {
       severity: filterValues.severity || "",
       search,
       group: group || filterValues.group || "",
+      tag: filterValues.tag || "",
       page,
       page_size: pageSize,
     }),

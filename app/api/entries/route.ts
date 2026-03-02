@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     severity: params.get("severity") || undefined,
     search: params.get("search") || undefined,
     group: params.get("group") || undefined,
+    tag: params.get("tag") || undefined,
     page: params.get("page") ? Number(params.get("page")) : undefined,
     page_size: params.get("page_size")
       ? Number(params.get("page_size"))

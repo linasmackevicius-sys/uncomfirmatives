@@ -155,7 +155,7 @@ Modify `components/entry-table.tsx`:
 ---
 
 ### Step 10: Dashboard + Analytics + Reports
-**Status: TODO**
+**Status: DONE**
 
 **dashboard-client.tsx:**
 - Financial Impact widget (estimated vs actual, by severity)
@@ -173,7 +173,7 @@ Modify `components/entry-table.tsx`:
 ---
 
 ### Step 11: Filter Bar + Export + Events
-**Status: TODO**
+**Status: DONE**
 
 - filter-bar.tsx: Add tags as filter option
 - lib/export.ts: Add new columns to CSV

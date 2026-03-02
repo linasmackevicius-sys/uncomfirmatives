@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api-client";
-import type { AnalyticsResponse, Stats } from "@/lib/types";
+import type { AnalyticsResponse, Stats, CostSummary } from "@/lib/types";
 import { GROUP_LABELS, type EntryGroup } from "@/lib/types";
 import DateRangePicker from "@/components/date-range-picker";
 import {
@@ -56,6 +56,7 @@ function today(): string {
 export default function ReportsView() {
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [costSummary, setCostSummary] = useState<CostSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
     from: daysAgo(90),
@@ -65,12 +66,14 @@ export default function ReportsView() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [a, s] = await Promise.all([
+      const [a, s, c] = await Promise.all([
         api.entries.analytics("month"),
         api.entries.stats(),
+        api.costs.summary().catch(() => null),
       ]);
       setAnalytics(a);
       setStats(s);
+      setCostSummary(c);
     } catch {
       // silently fail
     } finally {
@@ -219,6 +222,70 @@ export default function ReportsView() {
           ))}
         </div>
       </div>
+
+      {/* Financial Summary */}
+      {costSummary && (costSummary.total_estimated > 0 || costSummary.total_actual > 0) && (
+        <div className="report-section">
+          <div className="report-section-title">Financial Summary</div>
+          <div className="report-status-grid">
+            <div className="report-status-item">
+              <div className="report-status-count">
+                {new Intl.NumberFormat("en", { style: "currency", currency: "EUR", minimumFractionDigits: 0 }).format(costSummary.total_estimated / 100)}
+              </div>
+              <div className="report-status-label">Estimated Cost</div>
+            </div>
+            <div className="report-status-item">
+              <div
+                className="report-status-count"
+                style={{ color: costSummary.total_actual > costSummary.total_estimated ? "#ef4444" : undefined }}
+              >
+                {new Intl.NumberFormat("en", { style: "currency", currency: "EUR", minimumFractionDigits: 0 }).format(costSummary.total_actual / 100)}
+              </div>
+              <div className="report-status-label">Actual Cost</div>
+            </div>
+            <div className="report-status-item">
+              <div
+                className="report-status-count"
+                style={{ color: costSummary.total_actual > costSummary.total_estimated ? "#ef4444" : "#22c55e" }}
+              >
+                {new Intl.NumberFormat("en", { style: "currency", currency: "EUR", minimumFractionDigits: 0 }).format((costSummary.total_actual - costSummary.total_estimated) / 100)}
+              </div>
+              <div className="report-status-label">Variance</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Workflow Status Overview */}
+      {stats && (stats.workflow_completed_count > 0 || stats.workflow_in_progress_count > 0) && (
+        <div className="report-section">
+          <div className="report-section-title">Workflow Status Overview</div>
+          <div className="report-status-grid">
+            <div className="report-status-item">
+              <div className="report-status-count" style={{ color: "#22c55e" }}>
+                {stats.workflow_completed_count}
+              </div>
+              <div className="report-status-label">Completed</div>
+            </div>
+            <div className="report-status-item">
+              <div className="report-status-count" style={{ color: "#f59e0b" }}>
+                {stats.workflow_in_progress_count}
+              </div>
+              <div className="report-status-label">In Progress</div>
+            </div>
+            <div className="report-status-item">
+              <div className="report-status-count">
+                {Math.round(
+                  (stats.workflow_completed_count /
+                    Math.max(stats.workflow_completed_count + stats.workflow_in_progress_count, 1)) *
+                    100
+                )}%
+              </div>
+              <div className="report-status-label">Completion Rate</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="report-section no-print">
         <div className="report-section-title">Trend</div>

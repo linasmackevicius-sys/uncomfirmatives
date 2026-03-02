@@ -36,6 +36,7 @@ export interface ListParams {
   severity?: string;
   search?: string;
   group?: string;
+  tag?: string;
   page?: number;
   page_size?: number;
 }
@@ -48,6 +49,7 @@ export const api = {
       if (params?.severity) qs.set("severity", params.severity);
       if (params?.search) qs.set("search", params.search);
       if (params?.group) qs.set("group", params.group);
+      if (params?.tag) qs.set("tag", params.tag);
       if (params?.page) qs.set("page", String(params.page));
       if (params?.page_size) qs.set("page_size", String(params.page_size));
       const query = qs.toString();

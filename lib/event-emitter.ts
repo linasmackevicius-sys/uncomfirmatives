@@ -7,7 +7,10 @@ export type EntryEventType =
   | "entry.created"
   | "entry.updated"
   | "entry.deleted"
-  | "entry.status_changed";
+  | "entry.status_changed"
+  | "workflow.assigned"
+  | "workflow.step_updated"
+  | "workflow.completed";
 
 export interface EntryEvent {
   type: EntryEventType;

@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { entries, workflowSteps } from "./schema";
-import { eq, like, or, and, sql, desc, asc, type SQL } from "drizzle-orm";
+import { entries, entryTags, workflowSteps } from "./schema";
+import { eq, like, or, and, sql, desc, asc, inArray, type SQL } from "drizzle-orm";
 import { VALID_STATUSES, VALID_SEVERITIES, VALID_GROUPS } from "./validation";
 import { assignWorkflow, deleteWorkflowSteps } from "./workflows";
 import { deleteAttachmentsByEntry } from "./attachments";
@@ -26,6 +26,7 @@ interface ListParams {
   severity?: string;
   search?: string;
   group?: string;
+  tag?: string;
   page?: number;
   page_size?: number;
 }
@@ -68,6 +69,22 @@ export async function listEntries(
     conditions.push(
       or(like(entries.title, pattern), like(entries.description, pattern))!
     );
+  }
+  if (params.tag) {
+    const tagId = Number(params.tag);
+    if (!isNaN(tagId)) {
+      const taggedIds = await db
+        .select({ entryId: entryTags.entryId })
+        .from(entryTags)
+        .where(eq(entryTags.tagId, tagId));
+      const ids = taggedIds.map((r) => r.entryId);
+      if (ids.length > 0) {
+        conditions.push(inArray(entries.id, ids));
+      } else {
+        // No entries match this tag — return empty
+        return { data: [], total: 0, page: params.page ?? 1, page_size: params.page_size ?? 10 };
+      }
+    }
   }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
