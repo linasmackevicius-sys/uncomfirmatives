@@ -113,16 +113,24 @@ export default function EntriesView({ group, title }: Props) {
     refresh();
   }, [filterValues, search, group, page, pageSize, refresh]);
 
-  const handleCreate = async (input: CreateEntryInput) => {
+  const handleCreate = async (input: CreateEntryInput & { tag_ids?: number[] }) => {
     suppressBriefly();
-    await api.entries.create(group ? { ...input, group } : input);
+    const { tag_ids, ...entryInput } = input;
+    const created = await api.entries.create(group ? { ...entryInput, group } : entryInput);
+    if (tag_ids && tag_ids.length > 0) {
+      await api.entries.setTags(created.id, tag_ids);
+    }
     refresh();
   };
 
-  const handleUpdate = async (input: CreateEntryInput) => {
+  const handleUpdate = async (input: CreateEntryInput & { tag_ids?: number[] }) => {
     if (!editingEntry) return;
     suppressBriefly();
-    await api.entries.update(editingEntry.id, input);
+    const { tag_ids, ...entryInput } = input;
+    await api.entries.update(editingEntry.id, entryInput);
+    if (tag_ids) {
+      await api.entries.setTags(editingEntry.id, tag_ids);
+    }
     refresh();
   };
 

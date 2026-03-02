@@ -122,7 +122,7 @@ Extend `lib/api-client.ts` with all new methods:
 ---
 
 ### Step 7: Entry Form Changes
-**Status: TODO**
+**Status: DONE**
 
 Modify `components/entry-form.tsx`:
 - Add workflow type toggle (Standard / 8D) below group/severity

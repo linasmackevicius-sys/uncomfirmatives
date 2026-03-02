@@ -2089,6 +2089,45 @@ textarea {
   }
 }
 
+/* ── Form Toggle Group ────────────────────────── */
+
+.form-toggle-group {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.form-toggle {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--bg-input);
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.form-toggle:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
+.form-toggle:hover {
+  background: var(--bg-hover);
+}
+
+.form-toggle--active {
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.form-toggle--active:hover {
+  background: var(--accent-subtle);
+}
+
 /* ── Workflow Stepper ─────────────────────────── */
 
 .stepper {
