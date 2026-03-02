@@ -2497,3 +2497,191 @@ textarea {
 .attachment-delete:hover {
   color: var(--error);
 }
+
+/* ── Workflow Checklist (Detail Page) ─────────── */
+
+.workflow-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.workflow-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+
+.workflow-checklist-item:hover {
+  background: var(--bg-hover);
+}
+
+.workflow-checklist-status {
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.workflow-checklist-item--completed .workflow-checklist-status {
+  color: var(--success);
+}
+
+.workflow-checklist-item--in_progress .workflow-checklist-status {
+  color: var(--warning);
+}
+
+.workflow-checklist-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.workflow-checklist-code {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.workflow-checklist-name {
+  color: var(--text-primary);
+}
+
+.workflow-checklist-item--completed .workflow-checklist-name {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.workflow-checklist-assignee {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.workflow-checklist-due {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ── Detail Page: Sidebar Extras ──────────────── */
+
+.sidebar-divider {
+  margin: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.cost-over {
+  color: var(--error);
+}
+
+.cost-over-indicator {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--error);
+  background: rgba(239, 68, 68, 0.15);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ── Table: Progress, Cost, Tags, Column Picker ─ */
+
+.progress-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.progress-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.progress-mini-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--bg-input);
+  border-radius: 2px;
+  overflow: hidden;
+  min-width: 32px;
+}
+
+.progress-mini-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.table-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.tag-chip--sm {
+  font-size: 10px;
+  padding: 1px 6px;
+}
+
+.table-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.column-picker {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  padding: 8px 0;
+  min-width: 160px;
+}
+
+.column-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.column-picker-item:hover {
+  background: var(--bg-hover);
+}
+
+.column-picker-item input[type="checkbox"] {
+  accent-color: var(--accent);
+}

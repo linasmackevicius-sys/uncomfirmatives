@@ -134,7 +134,7 @@ Modify `components/entry-form.tsx`:
 ---
 
 ### Step 8: Entry Detail Page Changes
-**Status: TODO**
+**Status: DONE**
 
 Modify `components/entry-detail.tsx`:
 - Workflow stepper (always visible if steps exist)
@@ -144,7 +144,7 @@ Modify `components/entry-detail.tsx`:
 ---
 
 ### Step 9: Entry Table Changes
-**Status: TODO**
+**Status: DONE**
 
 Modify `components/entry-table.tsx`:
 - Progress column: "3/6" with mini bar

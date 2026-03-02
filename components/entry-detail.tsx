@@ -4,10 +4,13 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { useEntryEvents } from "@/hooks/use-entry-events";
-import type { Entry, EntryGroup } from "@/lib/types";
+import type { Entry, EntryGroup, WorkflowStep, Tag, Attachment } from "@/lib/types";
 import { GROUP_LABELS } from "@/lib/types";
 import StatusBadge from "@/components/status-badge";
 import CommentTimeline from "@/components/comment-timeline";
+import WorkflowStepper from "@/components/workflow-stepper";
+import CollapsibleSection from "@/components/collapsible-section";
+import AttachmentList from "@/components/attachment-list";
 
 interface Props {
   id: number;
@@ -25,6 +28,15 @@ const CAPA_FIELDS = [
   { key: "preventive_action", label: "Preventive Action" },
 ] as const;
 
+function formatCost(cents: number | null, currency: string): string {
+  if (cents === null) return "—";
+  return new Intl.NumberFormat("en", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+  }).format(cents / 100);
+}
+
 export default function EntryDetail({ id }: Props) {
   const router = useRouter();
   const [entry, setEntry] = useState<Entry | null>(null);
@@ -37,6 +49,13 @@ export default function EntryDetail({ id }: Props) {
   const [titleValue, setTitleValue] = useState("");
   const [descValue, setDescValue] = useState("");
   const [capaValues, setCapaValues] = useState<Record<string, string>>({});
+
+  // Workflow
+  const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>([]);
+  // Attachments
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  // Tags
+  const [tags, setTags] = useState<Tag[]>([]);
 
   const loadEntry = useCallback(async () => {
     setLoading(true);
@@ -57,13 +76,25 @@ export default function EntryDetail({ id }: Props) {
     }
   }, [id]);
 
+  const loadRelated = useCallback(async () => {
+    const [steps, atts, entryTags] = await Promise.all([
+      api.entries.workflow(id).catch(() => [] as WorkflowStep[]),
+      api.entries.attachments(id).catch(() => [] as Attachment[]),
+      api.entries.tags(id).catch(() => [] as Tag[]),
+    ]);
+    setWorkflowSteps(steps);
+    setAttachments(atts);
+    setTags(entryTags);
+  }, [id]);
+
   const { suppressBriefly } = useEntryEvents(loadEntry, { entryId: id });
 
   useEffect(() => {
     loadEntry();
-  }, [loadEntry]);
+    loadRelated();
+  }, [loadEntry, loadRelated]);
 
-  async function updateField(field: string, value: string | null) {
+  async function updateField(field: string, value: string | number | null) {
     if (!entry) return;
     suppressBriefly();
     try {
@@ -72,6 +103,29 @@ export default function EntryDetail({ id }: Props) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update");
     }
+  }
+
+  async function handleStepClick(step: WorkflowStep) {
+    if (!editing) return;
+    const nextStatus =
+      step.status === "pending"
+        ? "in_progress"
+        : step.status === "in_progress"
+          ? "completed"
+          : step.status;
+    if (nextStatus === step.status) return;
+    await api.entries.updateWorkflowStep(id, step.id, { status: nextStatus });
+    loadRelated();
+  }
+
+  async function handleUpload(file: File) {
+    await api.entries.uploadAttachment(id, file);
+    loadRelated();
+  }
+
+  async function handleDeleteAttachment(attachmentId: number) {
+    await api.entries.deleteAttachment(attachmentId);
+    loadRelated();
   }
 
   async function handleDelete() {
@@ -116,6 +170,11 @@ export default function EntryDetail({ id }: Props) {
     entry.due_date &&
     new Date(entry.due_date) < new Date() &&
     !["resolved", "closed"].includes(entry.status);
+
+  const costOverBudget =
+    entry.actual_cost !== null &&
+    entry.estimated_cost !== null &&
+    entry.actual_cost > entry.estimated_cost;
 
   return (
     <div className="entry-detail">
@@ -204,8 +263,58 @@ export default function EntryDetail({ id }: Props) {
           )}
         </div>
 
-        <div className="capa-section">
-          <div className="section-title">CAPA</div>
+        {/* Workflow Stepper — always visible if steps exist */}
+        {workflowSteps.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <WorkflowStepper
+              steps={workflowSteps}
+              onStepClick={editing ? handleStepClick : undefined}
+            />
+          </div>
+        )}
+
+        {/* Collapsible: Workflow Steps checklist */}
+        {workflowSteps.length > 0 && (
+          <CollapsibleSection
+            title="Workflow Steps"
+            defaultOpen
+            count={workflowSteps.filter((s) => s.status === "completed").length}
+          >
+            <div className="workflow-checklist">
+              {workflowSteps.map((step) => (
+                <div
+                  key={step.id}
+                  className={`workflow-checklist-item workflow-checklist-item--${step.status}`}
+                >
+                  <span className="workflow-checklist-status">
+                    {step.status === "completed"
+                      ? "✓"
+                      : step.status === "skipped"
+                        ? "–"
+                        : step.status === "in_progress"
+                          ? "●"
+                          : "○"}
+                  </span>
+                  <div className="workflow-checklist-info">
+                    <span className="workflow-checklist-code">{step.code}</span>
+                    <span className="workflow-checklist-name">{step.name}</span>
+                    {step.assigned_to && (
+                      <span className="workflow-checklist-assignee">
+                        {step.assigned_to}
+                      </span>
+                    )}
+                  </div>
+                  {step.due_date && (
+                    <span className="workflow-checklist-due">{step.due_date}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CollapsibleSection>
+        )}
+
+        {/* Collapsible: CAPA */}
+        <CollapsibleSection title="CAPA" defaultOpen>
           {CAPA_FIELDS.map(({ key, label }) => (
             <div key={key} className="capa-field">
               <div className="capa-field-label">{label}</div>
@@ -247,7 +356,38 @@ export default function EntryDetail({ id }: Props) {
               )}
             </div>
           ))}
-        </div>
+        </CollapsibleSection>
+
+        {/* Collapsible: Attachments */}
+        <CollapsibleSection title="Attachments" count={attachments.length}>
+          <AttachmentList
+            attachments={attachments}
+            entryId={id}
+            onUpload={handleUpload}
+            onDelete={handleDeleteAttachment}
+          />
+        </CollapsibleSection>
+
+        {/* Collapsible: Tags */}
+        <CollapsibleSection title="Tags" count={tags.length}>
+          {tags.length > 0 ? (
+            <div className="detail-tags">
+              {tags.map((tag) => (
+                <span
+                  key={tag.id}
+                  className="tag-chip"
+                  style={tag.color ? { backgroundColor: tag.color } : undefined}
+                >
+                  {tag.name}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
+              No tags
+            </div>
+          )}
+        </CollapsibleSection>
 
         <CommentTimeline entryId={id} />
       </div>
@@ -366,6 +506,53 @@ export default function EntryDetail({ id }: Props) {
           <div className="field-label">Updated</div>
           <div className="field-value">{fmt(updated)}</div>
         </div>
+
+        {/* Traceability fields */}
+        {(entry.product_name || entry.order_number || entry.batch_number) && (
+          <>
+            <div className="sidebar-divider" />
+            <div className="sidebar-section-label">Traceability</div>
+            {entry.product_name && (
+              <div className="field-row">
+                <div className="field-label">Product</div>
+                <div className="field-value">{entry.product_name}</div>
+              </div>
+            )}
+            {entry.order_number && (
+              <div className="field-row">
+                <div className="field-label">Order #</div>
+                <div className="field-value">{entry.order_number}</div>
+              </div>
+            )}
+            {entry.batch_number && (
+              <div className="field-row">
+                <div className="field-label">Batch #</div>
+                <div className="field-value">{entry.batch_number}</div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Financial fields */}
+        {(entry.estimated_cost !== null || entry.actual_cost !== null) && (
+          <>
+            <div className="sidebar-divider" />
+            <div className="sidebar-section-label">Financial</div>
+            <div className="field-row">
+              <div className="field-label">Estimated</div>
+              <div className="field-value">
+                {formatCost(entry.estimated_cost, entry.currency)}
+              </div>
+            </div>
+            <div className="field-row">
+              <div className="field-label">Actual</div>
+              <div className={`field-value${costOverBudget ? " cost-over" : ""}`}>
+                {formatCost(entry.actual_cost, entry.currency)}
+                {costOverBudget && <span className="cost-over-indicator">OVER</span>}
+              </div>
+            </div>
+          </>
+        )}
 
         {editing && (
           <div style={{ marginTop: 24, borderTop: "1px solid var(--border)", paddingTop: 16 }}>

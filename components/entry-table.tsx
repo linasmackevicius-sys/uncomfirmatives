@@ -7,10 +7,11 @@ import {
   type SortingState,
   type ColumnDef,
   type RowSelectionState,
+  type VisibilityState,
   flexRender,
 } from "@tanstack/react-table";
-import { useState, useMemo } from "react";
-import type { Entry, EntryGroup } from "@/lib/types";
+import { useState, useMemo, useEffect } from "react";
+import type { Entry, EntryGroup, WorkflowProgress, Tag } from "@/lib/types";
 import { GROUP_LABELS } from "@/lib/types";
 import StatusBadge from "@/components/status-badge";
 import { api } from "@/lib/api-client";
@@ -22,9 +23,56 @@ interface Props {
   onEdit: (entry: Entry) => void;
 }
 
+function formatCost(cents: number | null, currency: string): string {
+  if (cents === null) return "—";
+  return new Intl.NumberFormat("en", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
+}
+
 export default function EntryTable({ entries, onRefresh, onEdit }: Props) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
+
+  // Cache workflow progress and tags per entry
+  const [progressMap, setProgressMap] = useState<Record<number, WorkflowProgress>>({});
+  const [tagsMap, setTagsMap] = useState<Record<number, Tag[]>>({});
+
+  useEffect(() => {
+    const ids = entries.map((e) => e.id);
+    if (ids.length === 0) return;
+
+    // Load workflow progress for all entries
+    Promise.all(
+      ids.map((id) =>
+        api.entries.workflowProgress(id).then((p) => [id, p] as const).catch(() => null)
+      )
+    ).then((results) => {
+      const map: Record<number, WorkflowProgress> = {};
+      for (const r of results) {
+        if (r) map[r[0]] = r[1];
+      }
+      setProgressMap(map);
+    });
+
+    // Load tags for all entries
+    Promise.all(
+      ids.map((id) =>
+        api.entries.tags(id).then((t) => [id, t] as const).catch(() => null)
+      )
+    ).then((results) => {
+      const map: Record<number, Tag[]> = {};
+      for (const r of results) {
+        if (r) map[r[0]] = r[1];
+      }
+      setTagsMap(map);
+    });
+  }, [entries]);
 
   const handleStatusChange = async (id: number, status: string) => {
     await api.entries.updateStatus(id, status);
@@ -82,6 +130,7 @@ export default function EntryTable({ entries, onRefresh, onEdit }: Props) {
         ),
         size: 40,
         enableSorting: false,
+        enableHiding: false,
       },
       {
         id: "nc_id",
@@ -148,6 +197,66 @@ export default function EntryTable({ entries, onRefresh, onEdit }: Props) {
         ),
       },
       {
+        id: "progress",
+        header: "Progress",
+        size: 110,
+        cell: ({ row }) => {
+          const p = progressMap[row.original.id];
+          if (!p || p.total === 0) return <span style={{ color: "var(--text-muted)" }}>—</span>;
+          return (
+            <div className="progress-cell">
+              <span className="progress-text">
+                {p.completed}/{p.total}
+              </span>
+              <div className="progress-mini-bar">
+                <div
+                  className="progress-mini-fill"
+                  style={{ width: `${p.percent}%` }}
+                />
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        id: "cost",
+        header: "Cost",
+        size: 100,
+        cell: ({ row }) => {
+          const e = row.original;
+          if (e.estimated_cost === null && e.actual_cost === null) {
+            return <span style={{ color: "var(--text-muted)" }}>—</span>;
+          }
+          return (
+            <span className={e.actual_cost !== null && e.estimated_cost !== null && e.actual_cost > e.estimated_cost ? "cost-over" : ""}>
+              {formatCost(e.actual_cost ?? e.estimated_cost, e.currency)}
+            </span>
+          );
+        },
+      },
+      {
+        id: "tags",
+        header: "Tags",
+        size: 160,
+        cell: ({ row }) => {
+          const entryTags = tagsMap[row.original.id];
+          if (!entryTags || entryTags.length === 0) return null;
+          return (
+            <div className="table-tags">
+              {entryTags.map((tag) => (
+                <span
+                  key={tag.id}
+                  className="tag-chip tag-chip--sm"
+                  style={tag.color ? { backgroundColor: tag.color } : undefined}
+                >
+                  {tag.name}
+                </span>
+              ))}
+            </div>
+          );
+        },
+      },
+      {
         accessorKey: "assigned_to",
         header: "Assigned To",
         size: 140,
@@ -170,6 +279,7 @@ export default function EntryTable({ entries, onRefresh, onEdit }: Props) {
         id: "actions",
         header: "",
         size: 100,
+        enableHiding: false,
         cell: ({ row }) => (
           <div className="row-actions">
             <button
@@ -188,15 +298,16 @@ export default function EntryTable({ entries, onRefresh, onEdit }: Props) {
         ),
       },
     ],
-    []
+    [progressMap, tagsMap]
   );
 
   const table = useReactTable({
     data: entries,
     columns,
-    state: { sorting, rowSelection },
+    state: { sorting, rowSelection, columnVisibility },
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
+    onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     enableRowSelection: true,
@@ -213,6 +324,33 @@ export default function EntryTable({ entries, onRefresh, onEdit }: Props) {
 
   return (
     <>
+      <div className="table-toolbar">
+        <div style={{ position: "relative" }}>
+          <button
+            className="btn btn-sm btn-secondary"
+            onClick={() => setShowColumnPicker(!showColumnPicker)}
+          >
+            Columns
+          </button>
+          {showColumnPicker && (
+            <div className="column-picker">
+              {table.getAllLeafColumns().filter((col) => col.getCanHide()).map((col) => (
+                <label key={col.id} className="column-picker-item">
+                  <input
+                    type="checkbox"
+                    checked={col.getIsVisible()}
+                    onChange={col.getToggleVisibilityHandler()}
+                  />
+                  {typeof col.columnDef.header === "string"
+                    ? col.columnDef.header
+                    : col.id}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="table-container">
         <table>
           <thead>
