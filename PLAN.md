@@ -36,7 +36,7 @@ Run `drizzle-kit push` to apply schema changes.
 ---
 
 ### Step 2: Workflow Template Seed Data
-**Status: TODO**
+**Status: DONE**
 
 Create `lib/workflow-templates.ts` with default templates:
 - incoming_control: D1–D6 (Register, Investigate, Corrective Action, Approve, Implement, Close)
@@ -49,7 +49,7 @@ Create `seedTemplates()` function that inserts defaults if `workflow_templates` 
 ---
 
 ### Step 3: Service Layer — Workflows, Attachments, Tags
-**Status: TODO**
+**Status: DONE**
 
 **Create `lib/workflows.ts`:**
 - listWorkflowTemplates()
@@ -78,7 +78,7 @@ Create `seedTemplates()` function that inserts defaults if `workflow_templates` 
 ---
 
 ### Step 4: API Routes
-**Status: TODO**
+**Status: DONE**
 
 New routes:
 - GET/POST `/api/entries/[id]/workflow` — list/assign workflow steps
@@ -98,7 +98,7 @@ Also add `uploads/` to `.gitignore`.
 ---
 
 ### Step 5: API Client
-**Status: TODO**
+**Status: DONE**
 
 Extend `lib/api-client.ts` with all new methods:
 - entries.workflow(), entries.assignWorkflow(), entries.updateWorkflowStep()
@@ -112,7 +112,7 @@ Extend `lib/api-client.ts` with all new methods:
 ---
 
 ### Step 6: New UI Components
-**Status: TODO**
+**Status: DONE**
 
 - `components/workflow-stepper.tsx` — horizontal step progress bar (D1–D8 nodes)
 - `components/collapsible-section.tsx` — reusable expand/collapse wrapper
