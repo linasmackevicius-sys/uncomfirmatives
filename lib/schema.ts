@@ -5,6 +5,7 @@ import {
   text,
   timestamp,
   bigint,
+  date,
 } from "drizzle-orm/mysql-core";
 
 export const entries = mysqlTable("entries", {
@@ -17,8 +18,22 @@ export const entries = mysqlTable("entries", {
   severity: varchar("severity", { length: 50 }).default("minor"),
   group: varchar("group", { length: 50 }).default("incoming_control"),
   assignedTo: varchar("assigned_to", { length: 255 }),
+  rootCause: text("root_cause"),
+  correctiveAction: text("corrective_action"),
+  preventiveAction: text("preventive_action"),
+  dueDate: date("due_date", { mode: "string" }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
+});
+
+export const comments = mysqlTable("comments", {
+  id: bigint("id", { mode: "number", unsigned: true })
+    .primaryKey()
+    .autoincrement(),
+  entryId: bigint("entry_id", { mode: "number", unsigned: true }).notNull(),
+  author: varchar("author", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const statuses = mysqlTable("statuses", {

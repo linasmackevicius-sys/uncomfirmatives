@@ -36,6 +36,10 @@ function toEntry(row: typeof entries.$inferSelect): Entry {
     severity: row.severity ?? "minor",
     group: row.group ?? "incoming_control",
     assigned_to: row.assignedTo ?? "",
+    root_cause: row.rootCause ?? "",
+    corrective_action: row.correctiveAction ?? "",
+    preventive_action: row.preventiveAction ?? "",
+    due_date: row.dueDate ?? null,
     created_at: row.createdAt?.toISOString() ?? "",
     updated_at: row.updatedAt?.toISOString() ?? "",
   };
@@ -109,6 +113,12 @@ export async function createEntry(input: CreateEntryInput): Promise<Entry> {
       "invalid group: must be incoming_control, production, or client"
     );
 
+  if (input.due_date !== undefined && input.due_date !== null) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.due_date)) {
+      throw new ValidationError("invalid due_date: must be YYYY-MM-DD");
+    }
+  }
+
   const [result] = await db.insert(entries).values({
     title: input.title,
     description: input.description || null,
@@ -116,6 +126,10 @@ export async function createEntry(input: CreateEntryInput): Promise<Entry> {
     severity,
     group,
     assignedTo: input.assigned_to || null,
+    rootCause: input.root_cause || null,
+    correctiveAction: input.corrective_action || null,
+    preventiveAction: input.preventive_action || null,
+    dueDate: input.due_date || null,
   });
 
   return getEntryById(result.insertId);
@@ -152,6 +166,21 @@ export async function updateEntry(
   }
   if (input.assigned_to !== undefined) {
     updates.assignedTo = input.assigned_to || null;
+  }
+  if (input.root_cause !== undefined) {
+    updates.rootCause = input.root_cause || null;
+  }
+  if (input.corrective_action !== undefined) {
+    updates.correctiveAction = input.corrective_action || null;
+  }
+  if (input.preventive_action !== undefined) {
+    updates.preventiveAction = input.preventive_action || null;
+  }
+  if (input.due_date !== undefined) {
+    if (input.due_date !== null && !/^\d{4}-\d{2}-\d{2}$/.test(input.due_date)) {
+      throw new ValidationError("invalid due_date: must be YYYY-MM-DD");
+    }
+    updates.dueDate = input.due_date;
   }
 
   if (Object.keys(updates).length > 0) {

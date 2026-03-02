@@ -5,6 +5,9 @@ import type {
   Status,
   Stats,
   PaginatedResponse,
+  Comment,
+  CreateCommentInput,
+  AnalyticsResponse,
 } from "./types";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -61,6 +64,25 @@ export const api = {
     delete: (id: number) =>
       request<void>(`/entries/${id}`, { method: "DELETE" }),
     stats: () => request<Stats>("/entries/stats"),
+    comments: (id: number) => request<Comment[]>(`/entries/${id}/comments`),
+    addComment: (id: number, input: CreateCommentInput) =>
+      request<Comment>(`/entries/${id}/comments`, {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    analytics: (groupBy?: "week" | "month") => {
+      const qs = groupBy ? `?group_by=${groupBy}` : "";
+      return request<AnalyticsResponse>(`/entries/analytics${qs}`);
+    },
+    exportUrl: (params?: ListParams) => {
+      const qs = new URLSearchParams();
+      if (params?.status) qs.set("status", params.status);
+      if (params?.severity) qs.set("severity", params.severity);
+      if (params?.group) qs.set("group", params.group);
+      if (params?.search) qs.set("search", params.search);
+      const query = qs.toString();
+      return `/api/entries/export${query ? `?${query}` : ""}`;
+    },
   },
   statuses: {
     list: () => request<Status[]>("/statuses"),

@@ -5,8 +5,9 @@ import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { useEntryEvents } from "@/hooks/use-entry-events";
 import StatusBadge from "@/components/status-badge";
-import type { Stats, Entry, EntryGroup } from "@/lib/types";
+import type { Stats, Entry, EntryGroup, AnalyticsResponse } from "@/lib/types";
 import { GROUP_LABELS } from "@/lib/types";
+import { ResponsiveContainer, LineChart, Line } from "recharts";
 
 const STATUS_COLORS: Record<string, string> = {
   open: "#3b82f6",
@@ -48,16 +49,19 @@ const SEVERITIES = ["critical", "major", "minor"];
 export default function DashboardClient() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [recent, setRecent] = useState<Entry[]>([]);
+  const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
-      const [s, r] = await Promise.all([
+      const [s, r, a] = await Promise.all([
         api.entries.stats(),
         api.entries.list({ page: 1, page_size: 8 }),
+        api.entries.analytics("week"),
       ]);
       setStats(s);
       setRecent(r.data);
+      setAnalytics(a);
     } catch {
       // silently fail on refresh
     } finally {
@@ -144,6 +148,51 @@ export default function DashboardClient() {
           );
         })}
       </div>
+
+      {/* Extra stats: overdue + avg resolution + sparkline */}
+      {analytics && (
+        <>
+          <div className="dashboard-extra-stats">
+            <div className="stat-card">
+              <div className="label">Overdue</div>
+              <div
+                className="value"
+                style={{
+                  color: analytics.overdue_count > 0 ? "#ef4444" : undefined,
+                }}
+              >
+                {analytics.overdue_count}
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="label">Avg Resolution</div>
+              <div className="value">
+                {analytics.avg_resolution_time_hours
+                  ? `${Math.round(analytics.avg_resolution_time_hours / 24)}d`
+                  : "N/A"}
+              </div>
+            </div>
+          </div>
+          {analytics.entries_over_time.length > 1 && (
+            <div className="widget">
+              <div className="widget-header">Trend (last weeks)</div>
+              <div className="widget-body dashboard-sparkline">
+                <ResponsiveContainer width="100%" height={60}>
+                  <LineChart data={analytics.entries_over_time.slice(-12)}>
+                    <Line
+                      type="monotone"
+                      dataKey="count"
+                      stroke="#818cf8"
+                      strokeWidth={1.5}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Severity breakdown */}
       <div className="widget">

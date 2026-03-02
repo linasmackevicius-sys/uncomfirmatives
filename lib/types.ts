@@ -6,6 +6,10 @@ export interface Entry {
   severity: string;
   group: string;
   assigned_to: string;
+  root_cause: string;
+  corrective_action: string;
+  preventive_action: string;
+  due_date: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -23,6 +27,10 @@ export interface CreateEntryInput {
   severity: string;
   group: string;
   assigned_to: string;
+  root_cause?: string;
+  corrective_action?: string;
+  preventive_action?: string;
+  due_date?: string | null;
 }
 
 export interface UpdateEntryInput {
@@ -31,6 +39,10 @@ export interface UpdateEntryInput {
   severity?: string;
   group?: string;
   assigned_to?: string;
+  root_cause?: string;
+  corrective_action?: string;
+  preventive_action?: string;
+  due_date?: string | null;
 }
 
 export interface PaginatedResponse {
@@ -45,6 +57,27 @@ export interface Stats {
   by_status: Record<string, number>;
   by_severity: Record<string, number>;
   by_group: Record<string, number>;
+}
+
+export interface Comment {
+  id: number;
+  entry_id: number;
+  author: string;
+  content: string;
+  created_at: string;
+}
+
+export interface CreateCommentInput {
+  author: string;
+  content: string;
+}
+
+export interface AnalyticsResponse {
+  entries_over_time: { date: string; count: number }[];
+  avg_resolution_time_hours: number | null;
+  overdue_count: number;
+  by_severity_over_time: { date: string; severity: string; count: number }[];
+  by_group_over_time: { date: string; group: string; count: number }[];
 }
 
 export type EntryGroup = "incoming_control" | "production" | "client";

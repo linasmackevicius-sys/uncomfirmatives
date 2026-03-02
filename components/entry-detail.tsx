@@ -7,6 +7,7 @@ import { useEntryEvents } from "@/hooks/use-entry-events";
 import type { Entry, EntryGroup } from "@/lib/types";
 import { GROUP_LABELS } from "@/lib/types";
 import StatusBadge from "@/components/status-badge";
+import CommentTimeline from "@/components/comment-timeline";
 
 interface Props {
   id: number;
@@ -18,12 +19,11 @@ const SEVERITY_LABELS: Record<string, string> = {
   critical: "Critical",
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  open: "Open",
-  in_progress: "In Progress",
-  resolved: "Resolved",
-  closed: "Closed",
-};
+const CAPA_FIELDS = [
+  { key: "root_cause", label: "Root Cause" },
+  { key: "corrective_action", label: "Corrective Action" },
+  { key: "preventive_action", label: "Preventive Action" },
+] as const;
 
 export default function EntryDetail({ id }: Props) {
   const router = useRouter();
@@ -33,9 +33,10 @@ export default function EntryDetail({ id }: Props) {
   const [editing, setEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [editingDesc, setEditingDesc] = useState(false);
+  const [editingCapaField, setEditingCapaField] = useState<string | null>(null);
   const [titleValue, setTitleValue] = useState("");
   const [descValue, setDescValue] = useState("");
-  const [activityOpen, setActivityOpen] = useState(false);
+  const [capaValues, setCapaValues] = useState<Record<string, string>>({});
 
   const loadEntry = useCallback(async () => {
     setLoading(true);
@@ -44,6 +45,11 @@ export default function EntryDetail({ id }: Props) {
       setEntry(e);
       setTitleValue(e.title);
       setDescValue(e.description || "");
+      setCapaValues({
+        root_cause: e.root_cause || "",
+        corrective_action: e.corrective_action || "",
+        preventive_action: e.preventive_action || "",
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load entry");
     } finally {
@@ -57,7 +63,7 @@ export default function EntryDetail({ id }: Props) {
     loadEntry();
   }, [loadEntry]);
 
-  async function updateField(field: string, value: string) {
+  async function updateField(field: string, value: string | null) {
     if (!entry) return;
     suppressBriefly();
     try {
@@ -79,6 +85,7 @@ export default function EntryDetail({ id }: Props) {
     setEditing(false);
     setEditingTitle(false);
     setEditingDesc(false);
+    setEditingCapaField(null);
   }
 
   if (loading) {
@@ -104,6 +111,11 @@ export default function EntryDetail({ id }: Props) {
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
+
+  const isOverdue =
+    entry.due_date &&
+    new Date(entry.due_date) < new Date() &&
+    !["resolved", "closed"].includes(entry.status);
 
   return (
     <div className="entry-detail">
@@ -192,6 +204,52 @@ export default function EntryDetail({ id }: Props) {
           )}
         </div>
 
+        <div className="capa-section">
+          <div className="section-title">CAPA</div>
+          {CAPA_FIELDS.map(({ key, label }) => (
+            <div key={key} className="capa-field">
+              <div className="capa-field-label">{label}</div>
+              {editing && editingCapaField === key ? (
+                <textarea
+                  className="inline-edit"
+                  style={{ minHeight: 80, fontSize: 14, lineHeight: 1.6 }}
+                  value={capaValues[key]}
+                  onChange={(e) =>
+                    setCapaValues((prev) => ({ ...prev, [key]: e.target.value }))
+                  }
+                  onBlur={() => {
+                    setEditingCapaField(null);
+                    if (capaValues[key] !== (entry[key as keyof Entry] || ""))
+                      updateField(key, capaValues[key]);
+                  }}
+                  autoFocus
+                />
+              ) : (entry[key as keyof Entry] as string) ? (
+                <div
+                  className="capa-field-value"
+                  onClick={editing ? () => setEditingCapaField(key) : undefined}
+                  style={{ cursor: editing ? "text" : "default" }}
+                >
+                  {entry[key as keyof Entry] as string}
+                </div>
+              ) : editing ? (
+                <div
+                  className="capa-field-value capa-field-empty"
+                  onClick={() => setEditingCapaField(key)}
+                  style={{ cursor: "text" }}
+                >
+                  Click to add {label.toLowerCase()}...
+                </div>
+              ) : (
+                <div className="capa-field-value capa-field-empty">
+                  Not specified
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <CommentTimeline entryId={id} />
       </div>
 
       <div className="entry-detail-sidebar">
@@ -257,6 +315,29 @@ export default function EntryDetail({ id }: Props) {
         </div>
 
         <div className="field-row">
+          <div className="field-label">Due Date</div>
+          {editing ? (
+            <input
+              type="date"
+              className="inline-edit"
+              value={entry.due_date || ""}
+              onChange={(e) => updateField("due_date", e.target.value || null)}
+            />
+          ) : (
+            <div className={`field-value${isOverdue ? " overdue" : ""}`}>
+              {entry.due_date ? (
+                <>
+                  {entry.due_date}
+                  {isOverdue && <span className="overdue-indicator">OVERDUE</span>}
+                </>
+              ) : (
+                <span style={{ color: "var(--text-muted)" }}>No due date</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="field-row">
           <div className="field-label">Assigned To</div>
           {editing ? (
             <input
@@ -284,23 +365,6 @@ export default function EntryDetail({ id }: Props) {
         <div className="field-row">
           <div className="field-label">Updated</div>
           <div className="field-value">{fmt(updated)}</div>
-        </div>
-
-        <div className="detail-activity-section">
-          <button
-            className="detail-activity-toggle"
-            onClick={() => setActivityOpen(!activityOpen)}
-          >
-            <span className={`sidebar-chevron${activityOpen ? " open" : ""}`}>&#9654;</span>
-            <span>Activity</span>
-          </button>
-          {activityOpen && (
-            <div className="detail-activity-content">
-              <div className="detail-activity-placeholder">
-                Activity timeline coming soon...
-              </div>
-            </div>
-          )}
         </div>
 
         {editing && (

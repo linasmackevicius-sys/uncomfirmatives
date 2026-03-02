@@ -77,6 +77,20 @@ export default function Sidebar() {
           active={isActive("/board")}
           collapsed={collapsed}
         />
+        <SidebarItem
+          href="/analytics"
+          icon="◔"
+          label="Analytics"
+          active={isActive("/analytics")}
+          collapsed={collapsed}
+        />
+        <SidebarItem
+          href="/reports"
+          icon="▤"
+          label="Reports"
+          active={isActive("/reports")}
+          collapsed={collapsed}
+        />
 
         {!collapsed && (
           <>

@@ -9,12 +9,13 @@
     "clean": "rm -rf .next"
   },
   "dependencies": {
+    "@tanstack/react-table": "^8.20.0",
+    "drizzle-orm": "^0.39.0",
+    "mysql2": "^3.12.0",
     "next": "^15.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@tanstack/react-table": "^8.20.0",
-    "drizzle-orm": "^0.39.0",
-    "mysql2": "^3.12.0"
+    "recharts": "^3.7.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

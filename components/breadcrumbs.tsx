@@ -9,6 +9,8 @@ const routeLabels: Record<string, string> = {
   "": "Dashboard",
   entries: "Entries",
   board: "Board",
+  analytics: "Analytics",
+  reports: "Reports",
 };
 
 export default function Breadcrumbs() {
