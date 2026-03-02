@@ -70,7 +70,7 @@ export default function AnalyticsView() {
   });
 
   const loadData = useCallback(async () => {
-    setLoading(true);
+    if (!analytics) setLoading(true);
     try {
       const [a, s, c] = await Promise.all([
         api.entries.analytics(groupBy),
@@ -85,6 +85,7 @@ export default function AnalyticsView() {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupBy]);
 
   useEffect(() => {

@@ -18,7 +18,22 @@ import type {
   CostSummary,
 } from "./types";
 
+// Simple stale-while-revalidate cache for GET requests
+const cache = new Map<string, { data: unknown; ts: number }>();
+const CACHE_TTL = 30_000; // 30s — serve stale instantly, revalidate in background
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const isGet = !options?.method || options.method === "GET";
+  const cacheKey = isGet ? path : "";
+
+  // For GET requests: return cached data if fresh, otherwise fetch
+  if (isGet && cacheKey) {
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+      return cached.data as T;
+    }
+  }
+
   const res = await fetch(`/api${path}`, {
     headers: { "Content-Type": "application/json" },
     ...options,
@@ -28,7 +43,19 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error(body.error || res.statusText);
   }
   if (res.status === 204) return undefined as T;
-  return res.json();
+  const data = await res.json();
+
+  // Cache GET responses
+  if (isGet && cacheKey) {
+    cache.set(cacheKey, { data, ts: Date.now() });
+  }
+
+  return data;
+}
+
+/** Invalidate all cached GET responses (call after mutations) */
+export function invalidateCache() {
+  cache.clear();
 }
 
 export interface ListParams {

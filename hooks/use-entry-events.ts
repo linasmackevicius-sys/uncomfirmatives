@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
+import { invalidateCache } from "@/lib/api-client";
 
 interface Options {
   entryId?: number;
@@ -42,6 +43,7 @@ export function useEntryEvents(
         return;
       }
 
+      invalidateCache();
       refreshRef.current();
     };
 

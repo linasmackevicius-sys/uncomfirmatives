@@ -32,7 +32,7 @@ export default function BoardView() {
   const draggedId = useRef<number | null>(null);
 
   const loadEntries = useCallback(async () => {
-    setLoading(true);
+    if (entries.length === 0) setLoading(true);
     try {
       const result = await api.entries.list({ page_size: 200 });
       setEntries(result.data);
@@ -41,6 +41,7 @@ export default function BoardView() {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEntryEvents(loadEntries);

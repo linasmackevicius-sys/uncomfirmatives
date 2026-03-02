@@ -64,7 +64,7 @@ export default function ReportsView() {
   });
 
   const loadData = useCallback(async () => {
-    setLoading(true);
+    if (!analytics) setLoading(true);
     try {
       const [a, s, c] = await Promise.all([
         api.entries.analytics("month"),
@@ -79,6 +79,7 @@ export default function ReportsView() {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

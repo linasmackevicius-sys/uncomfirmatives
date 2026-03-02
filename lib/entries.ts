@@ -166,14 +166,16 @@ export async function createEntry(input: CreateEntryInput): Promise<Entry> {
     currency: input.currency || "EUR",
   }).returning();
 
-  const entry = await getEntryById(inserted.id);
-
-  // Auto-assign workflow if template key provided
+  // Auto-assign workflow if template key provided (best-effort — don't fail creation)
   if (input.workflow_template_key) {
-    await assignWorkflow(entry.id, input.workflow_template_key);
+    try {
+      await assignWorkflow(inserted.id, input.workflow_template_key);
+    } catch {
+      // Workflow template may not exist — entry is still created successfully
+    }
   }
 
-  return getEntryById(entry.id);
+  return getEntryById(inserted.id);
 }
 
 export async function updateEntry(

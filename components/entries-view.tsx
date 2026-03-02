@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { api, type ListParams } from "@/lib/api-client";
+import { api, invalidateCache, type ListParams } from "@/lib/api-client";
 import EntryTable from "@/components/entry-table";
 import EntryList from "@/components/entry-list";
 import EntryForm from "@/components/entry-form";
@@ -122,7 +122,8 @@ export default function EntriesView({ group, title }: Props) {
   filtersRef.current = filters;
 
   const refresh = useCallback(async () => {
-    setLoading(true);
+    // Only show full loading on first load — keep stale data visible during refresh
+    if (data.data.length === 0) setLoading(true);
     setError(null);
     try {
       const result = await api.entries.list(filtersRef.current);
@@ -132,6 +133,7 @@ export default function EntriesView({ group, title }: Props) {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const { suppressBriefly } = useEntryEvents(refresh);
@@ -151,6 +153,7 @@ export default function EntriesView({ group, title }: Props) {
         // Entry created successfully — don't block on tag failure
       }
     }
+    invalidateCache();
     refresh();
   };
 
@@ -166,6 +169,7 @@ export default function EntriesView({ group, title }: Props) {
         // Entry updated successfully — don't block on tag failure
       }
     }
+    invalidateCache();
     refresh();
   };
 
@@ -248,7 +252,7 @@ export default function EntriesView({ group, title }: Props) {
       ) : viewMode === "table" ? (
         <EntryTable
           entries={data.data}
-          onRefresh={() => { suppressBriefly(); refresh(); }}
+          onRefresh={() => { suppressBriefly(); invalidateCache(); refresh(); }}
           onEdit={handleEdit}
         />
       ) : (
