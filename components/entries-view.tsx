@@ -53,6 +53,7 @@ export default function EntriesView({ group, title }: Props) {
   const [viewMode, setViewMode] = useState<"table" | "list">("table");
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState<Entry | undefined>();
   const [page, setPage] = useState(1);
@@ -91,6 +92,12 @@ export default function EntriesView({ group, title }: Props) {
     if (saved === "list" || saved === "table") setViewMode(saved);
   }, []);
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   // Open form if ?new=1
   useEffect(() => {
     if (searchParams.get("new") === "1") {
@@ -102,13 +109,13 @@ export default function EntriesView({ group, title }: Props) {
     () => ({
       status: filterValues.status || "",
       severity: filterValues.severity || "",
-      search,
+      search: debouncedSearch,
       group: group || filterValues.group || "",
       tag: filterValues.tag || "",
       page,
       page_size: pageSize,
     }),
-    [filterValues, search, group, page, pageSize]
+    [filterValues, debouncedSearch, group, page, pageSize]
   );
 
   const filtersRef = useRef(filters);
@@ -131,14 +138,18 @@ export default function EntriesView({ group, title }: Props) {
 
   useEffect(() => {
     refresh();
-  }, [filterValues, search, group, page, pageSize, refresh]);
+  }, [filterValues, debouncedSearch, group, page, pageSize, refresh]);
 
   const handleCreate = async (input: CreateEntryInput & { tag_ids?: number[] }) => {
     suppressBriefly();
     const { tag_ids, ...entryInput } = input;
     const created = await api.entries.create(group ? { ...entryInput, group } : entryInput);
     if (tag_ids && tag_ids.length > 0) {
-      await api.entries.setTags(created.id, tag_ids);
+      try {
+        await api.entries.setTags(created.id, tag_ids);
+      } catch {
+        // Entry created successfully — don't block on tag failure
+      }
     }
     refresh();
   };
@@ -149,7 +160,11 @@ export default function EntriesView({ group, title }: Props) {
     const { tag_ids, ...entryInput } = input;
     await api.entries.update(editingEntry.id, entryInput);
     if (tag_ids) {
-      await api.entries.setTags(editingEntry.id, tag_ids);
+      try {
+        await api.entries.setTags(editingEntry.id, tag_ids);
+      } catch {
+        // Entry updated successfully — don't block on tag failure
+      }
     }
     refresh();
   };

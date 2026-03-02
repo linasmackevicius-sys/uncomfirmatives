@@ -47,31 +47,9 @@ export default function EntryTable({ entries, onRefresh, onEdit }: Props) {
     const ids = entries.map((e) => e.id);
     if (ids.length === 0) return;
 
-    // Load workflow progress for all entries
-    Promise.all(
-      ids.map((id) =>
-        api.entries.workflowProgress(id).then((p) => [id, p] as const).catch(() => null)
-      )
-    ).then((results) => {
-      const map: Record<number, WorkflowProgress> = {};
-      for (const r of results) {
-        if (r) map[r[0]] = r[1];
-      }
-      setProgressMap(map);
-    });
-
-    // Load tags for all entries
-    Promise.all(
-      ids.map((id) =>
-        api.entries.tags(id).then((t) => [id, t] as const).catch(() => null)
-      )
-    ).then((results) => {
-      const map: Record<number, Tag[]> = {};
-      for (const r of results) {
-        if (r) map[r[0]] = r[1];
-      }
-      setTagsMap(map);
-    });
+    // Batch-load workflow progress and tags in 2 requests instead of N*2
+    api.entries.batchProgress(ids).then(setProgressMap).catch(() => {});
+    api.entries.batchTags(ids).then(setTagsMap).catch(() => {});
   }, [entries]);
 
   const handleStatusChange = async (id: number, status: string) => {

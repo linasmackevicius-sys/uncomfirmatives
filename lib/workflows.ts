@@ -5,7 +5,7 @@ import {
   workflowSteps,
   entries,
 } from "./schema";
-import { eq, asc, sql, and } from "drizzle-orm";
+import { eq, asc, sql, and, inArray } from "drizzle-orm";
 import { VALID_WORKFLOW_STEP_STATUSES } from "./validation";
 import type {
   WorkflowTemplate,
@@ -243,6 +243,45 @@ export async function getWorkflowProgress(
     current_step: current ? current.code : null,
     percent: Math.round((completed / steps.length) * 100),
   };
+}
+
+export async function batchWorkflowProgress(
+  entryIds: number[]
+): Promise<Record<number, WorkflowProgress>> {
+  if (entryIds.length === 0) return {};
+
+  const rows = await db
+    .select()
+    .from(workflowSteps)
+    .where(inArray(workflowSteps.entryId, entryIds))
+    .orderBy(asc(workflowSteps.stepOrder));
+
+  const grouped: Record<number, typeof rows> = {};
+  for (const row of rows) {
+    (grouped[row.entryId] ??= []).push(row);
+  }
+
+  const result: Record<number, WorkflowProgress> = {};
+  for (const id of entryIds) {
+    const steps = grouped[id] ?? [];
+    if (steps.length === 0) {
+      result[id] = { total: 0, completed: 0, current_step: null, percent: 0 };
+      continue;
+    }
+    const completed = steps.filter(
+      (s) => s.status === "completed" || s.status === "skipped"
+    ).length;
+    const current = steps.find(
+      (s) => s.status === "in_progress" || s.status === "pending"
+    );
+    result[id] = {
+      total: steps.length,
+      completed,
+      current_step: current ? current.code : null,
+      percent: Math.round((completed / steps.length) * 100),
+    };
+  }
+  return result;
 }
 
 export async function deleteWorkflowSteps(entryId: number): Promise<void> {

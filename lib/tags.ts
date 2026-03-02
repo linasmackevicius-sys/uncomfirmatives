@@ -77,6 +77,27 @@ export async function setEntryTags(
   return getEntryTags(entryId);
 }
 
+export async function batchEntryTags(
+  entryIds: number[]
+): Promise<Record<number, Tag[]>> {
+  if (entryIds.length === 0) return {};
+
+  const rows = await db
+    .select({ entryId: entryTags.entryId, tag: tags })
+    .from(entryTags)
+    .innerJoin(tags, eq(entryTags.tagId, tags.id))
+    .where(inArray(entryTags.entryId, entryIds));
+
+  const result: Record<number, Tag[]> = {};
+  for (const id of entryIds) {
+    result[id] = [];
+  }
+  for (const row of rows) {
+    result[row.entryId].push(toTag(row.tag));
+  }
+  return result;
+}
+
 export async function deleteEntryTags(entryId: number): Promise<void> {
   await db.delete(entryTags).where(eq(entryTags.entryId, entryId));
 }

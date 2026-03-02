@@ -126,6 +126,14 @@ export const api = {
         }
       );
     },
+    batchProgress: (ids: number[]) =>
+      request<Record<number, WorkflowProgress>>(
+        `/entries/batch-progress?ids=${ids.join(",")}`
+      ),
+    batchTags: (ids: number[]) =>
+      request<Record<number, Tag[]>>(
+        `/entries/batch-tags?ids=${ids.join(",")}`
+      ),
     attachments: (id: number) =>
       request<Attachment[]>(`/entries/${id}/attachments`),
     uploadAttachment: async (id: number, file: File, uploadedBy?: string) => {
